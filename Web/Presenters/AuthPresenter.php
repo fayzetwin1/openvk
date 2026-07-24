@@ -181,10 +181,10 @@ final class AuthPresenter extends OpenVKPresenter
 
     public function renderLogin(): void
     {
-        $redirUrl = $this->requestParam("jReturnTo");
+        $redirUrl = ovk_safe_internal_redirect($this->requestParam("jReturnTo"), "");
 
         if (!is_null($this->user->identity)) {
-            $this->redirect($redirUrl ?? $this->user->identity->getURL());
+            $this->redirect($redirUrl !== "" ? $redirUrl : $this->user->identity->getURL());
         }
 
         if (!$this->hasPermission("user", "login", -1)) {
@@ -192,6 +192,13 @@ final class AuthPresenter extends OpenVKPresenter
         }
 
         if ($_SERVER["REQUEST_METHOD"] === "POST") {
+            // Soft rate-limit failed logins via IP budget (same as write actions)
+            $ip  = (new \openvk\Web\Models\Repositories\IPs())->get(CONNECTING_IP);
+            $res = $ip->rateLimit(1);
+            if (!($res === \openvk\Web\Models\Entities\IP::RL_RESET || $res === \openvk\Web\Models\Entities\IP::RL_CANEXEC)) {
+                $this->flashFail("err", tr("login_failed"), tr("rate_limit_error_comment", OPENVK_ROOT_CONF["openvk"]["appearance"]["name"] ?? "OpenVK", $res));
+            }
+
             $user = $this->db->table("ChandlerUsers")->where("login", $this->postParam("login"))->fetch();
             if (!$user) {
                 $this->flashFail("err", tr("login_failed"), tr("invalid_username_or_password"));
@@ -224,7 +231,7 @@ final class AuthPresenter extends OpenVKPresenter
             }
 
             $this->authenticator->authenticate($user->id);
-            $this->redirect($redirUrl ?? $ovkUser->getURL());
+            $this->redirect($redirUrl !== "" ? $redirUrl : $ovkUser->getURL());
         }
     }
 

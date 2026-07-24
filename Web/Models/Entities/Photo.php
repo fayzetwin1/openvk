@@ -218,6 +218,22 @@ class Photo extends Media
         return $res;
     }
 
+    public function needsForceSize(string $sizeName): bool
+    {
+        $sizes = $this->getRecord()->sizes;
+        if (!$sizes) {
+            return false;
+        }
+
+        $sizes = MessagePack::unpack($sizes);
+        $size  = $sizes[$sizeName] ?? false;
+        if (!$size) {
+            return false;
+        }
+
+        return !isset($size[3]) || $size[3] !== true;
+    }
+
     public function forceSize(string $sizeName): bool
     {
         $hash  = $this->getRecord()->hash;

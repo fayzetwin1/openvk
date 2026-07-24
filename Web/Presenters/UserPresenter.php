@@ -13,6 +13,7 @@ use openvk\Web\Models\Repositories\{Users, Clubs, Albums, Videos, Notes, Voucher
 use openvk\Web\Models\Exceptions\InvalidUserNameException;
 use openvk\Web\Util\Validator;
 use Chandler\Security\Authenticator;
+use Chandler\Session\Session;
 use lfkeitel\phptotp\{Base32, Totp};
 use chillerlan\QRCode\{QRCode, QROptions};
 use Nette\Database\UniqueConstraintViolationException;
@@ -531,6 +532,7 @@ final class UserPresenter extends OpenVKPresenter
         $user = $this->users->get($id);
         if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $this->willExecuteWriteAction();
+            $this->assertNoCSRF();
 
             if ($_GET['act'] === "main" || $_GET['act'] == null) {
                 if ($this->postParam("old_pass") && $this->postParam("new_pass") && $this->postParam("repeat_pass")) {
@@ -763,6 +765,7 @@ final class UserPresenter extends OpenVKPresenter
 
         if ($this->user->identity->is2faEnabled()) {
             if ($_SERVER["REQUEST_METHOD"] === "POST") {
+                $this->assertNoCSRF();
                 if (!Authenticator::verifyHash($this->postParam("password"), $this->user->identity->getChandlerUser()->getRaw()->passwordHash)) {
                     $this->flashFail("err", tr("error"), tr("incorrect_password"));
                 }
@@ -776,20 +779,27 @@ final class UserPresenter extends OpenVKPresenter
             $this->redirect("/settings");
         }
 
-        $secret = Base32::encode(Totp::GenerateSecret(16));
+        // Keep secret server-side only — never accept client-supplied secret
+        $sessionSecret = Session::i()->get("_2fa_setup_secret");
+        if (!is_string($sessionSecret) || $sessionSecret === "") {
+            $sessionSecret = Base32::encode(Totp::GenerateSecret(16));
+            Session::i()->set("_2fa_setup_secret", $sessionSecret);
+        }
+        $secret = $sessionSecret;
         if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $this->willExecuteWriteAction();
+            $this->assertNoCSRF();
 
             if (!Authenticator::verifyHash($this->postParam("password"), $this->user->identity->getChandlerUser()->getRaw()->passwordHash)) {
                 $this->flashFail("err", tr("error"), tr("incorrect_password"));
             }
 
-            $secret = $this->postParam("secret");
-            $code   = $this->postParam("code");
+            $code = $this->postParam("code");
 
             if ($code === (new Totp())->GenerateToken(Base32::decode($secret))) {
                 $this->user->identity->set2fa_secret($secret);
                 $this->user->identity->save();
+                Session::i()->set("_2fa_setup_secret", null);
 
                 $this->flash("succ", tr("two_factor_authentication_enabled_message"), tr("two_factor_authentication_enabled_message_description"));
                 $this->redirect("/settings");
@@ -817,6 +827,7 @@ final class UserPresenter extends OpenVKPresenter
     {
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
+        $this->assertNoCSRF();
 
         if (!Authenticator::verifyHash($this->postParam("password"), $this->user->identity->getChandlerUser()->getRaw()->passwordHash)) {
             $this->flashFail("err", tr("error"), tr("incorrect_password"));
@@ -847,6 +858,7 @@ final class UserPresenter extends OpenVKPresenter
     {
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
+        $this->assertNoCSRF();
 
         if (!OPENVK_ROOT_CONF["openvk"]["preferences"]["commerce"]) {
             $this->flashFail("err", tr("error"), tr("feature_disabled"));
@@ -873,16 +885,23 @@ final class UserPresenter extends OpenVKPresenter
             $this->flashFail("err", tr("failed_to_tranfer_points"), tr("receiver_not_found"));
         }
 
-        if ($this->user->identity->getCoins() < $value) {
-            $this->flashFail("err", tr("failed_to_tranfer_points"), tr("you_dont_have_enough_points"));
-        }
-
         if ($this->user->id !== $receiver->getId()) {
-            $this->user->identity->setCoins($this->user->identity->getCoins() - $value);
-            $this->user->identity->save();
+            $conn = \Chandler\Database\DatabaseConnection::i()->getConnection();
+            $result = $conn->query(
+                "UPDATE `profiles` SET `coins` = `coins` - ? WHERE `id` = ? AND `coins` >= ?",
+                $value,
+                $this->user->id,
+                $value
+            );
+            if ($result->getRowCount() < 1) {
+                $this->flashFail("err", tr("failed_to_tranfer_points"), tr("you_dont_have_enough_points"));
+            }
 
-            $receiver->setCoins($receiver->getCoins() + $value);
-            $receiver->save();
+            $conn->query(
+                "UPDATE `profiles` SET `coins` = `coins` + ? WHERE `id` = ?",
+                $value,
+                $receiver->getId()
+            );
 
             (new CoinsTransferNotification($receiver, $this->user->identity, $value, $message))->emit();
         }
@@ -894,6 +913,7 @@ final class UserPresenter extends OpenVKPresenter
     {
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
+        $this->assertNoCSRF();
 
         if (!OPENVK_ROOT_CONF["openvk"]["preferences"]["commerce"]) {
             $this->flashFail("err", tr("error"), tr("feature_disabled"));
@@ -921,11 +941,19 @@ final class UserPresenter extends OpenVKPresenter
         }
 
         if ($this->user->identity->getCoins() < $value) {
-            $this->flashFail("err", tr("failed_to_increase_rating"), tr("you_dont_have_enough_points"));
+            // provisional check; atomic debit below is authoritative
         }
 
-        $this->user->identity->setCoins($this->user->identity->getCoins() - $value);
-        $this->user->identity->save();
+        $conn = \Chandler\Database\DatabaseConnection::i()->getConnection();
+        $result = $conn->query(
+            "UPDATE `profiles` SET `coins` = `coins` - ? WHERE `id` = ? AND `coins` >= ?",
+            $value,
+            $this->user->id,
+            $value
+        );
+        if ($result->getRowCount() < 1) {
+            $this->flashFail("err", tr("failed_to_increase_rating"), tr("you_dont_have_enough_points"));
+        }
 
         $receiver->setRating($receiver->getRating() + $value);
         $receiver->save();

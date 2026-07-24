@@ -40,6 +40,8 @@ openvk:
             forceStrongPassword: false
             disablePasswordRestoring: true # turn this off if you have configured e-mail sending correctly
             enableSu: true
+            oauthRedirectHosts: []
+            canonicalHost: null
             rateLimits:
                 actions: 5
                 time: 20

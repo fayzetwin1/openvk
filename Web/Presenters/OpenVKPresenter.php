@@ -67,8 +67,15 @@ abstract class OpenVKPresenter extends SimplePresenter
         } else {
             $this->flash($type, $title, $message, $code);
             $referer = $_SERVER["HTTP_REFERER"] ?? "/";
+            $path    = "/";
+            if (is_string($referer) && $referer !== "") {
+                $parsed = parse_url($referer);
+                if (is_array($parsed) && isset($parsed["path"])) {
+                    $path = $parsed["path"] . (isset($parsed["query"]) ? "?" . $parsed["query"] : "");
+                }
+            }
 
-            $this->redirect($referer);
+            $this->redirect(ovk_safe_internal_redirect($path, "/"));
         }
     }
 
@@ -212,6 +219,8 @@ abstract class OpenVKPresenter extends SimplePresenter
 
     public function onStartup(): void
     {
+        ovk_pin_public_host();
+
         $user = Authenticator::i()->getUser();
 
         if (!$this->template) {
@@ -320,8 +329,9 @@ abstract class OpenVKPresenter extends SimplePresenter
             $this->template->thisUser = null;
         }
 
-        $this->template->baseUrl = ovk_scheme(true) . $_SERVER['HTTP_HOST'];
+        $this->template->baseUrl = ovk_scheme(true) . ovk_public_host();
         $this->template->instance_name = OPENVK_ROOT_CONF['openvk']['appearance']['name'];
+        $this->template->safeReturnTo = ovk_safe_internal_redirect($_SERVER["REQUEST_URI"] ?? "/", "/");
 
         header("X-OpenVK-User-Validated: $userValidated");
         header("X-Accel-Expires: $cacheTime");

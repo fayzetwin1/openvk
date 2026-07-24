@@ -15,12 +15,30 @@ use WhichBrowser;
 final class VKAPIPresenter extends OpenVKPresenter
 {
     protected $silent = true;
+    protected $presenterName = "api";
+
+    private function mapSectionMaintenance(string $object): void
+    {
+        $map = [
+            "gifts"   => "gifts",
+            "audio"   => "audio",
+            "video"   => "video",
+            "photos"  => "photos",
+            "docs"    => "docs",
+            "notes"   => "notes",
+            "messages" => "messenger",
+            "wall"    => "wall",
+            "newsfeed" => "feed",
+        ];
+        $section = $map[strtolower($object)] ?? null;
+        if ($section && !empty(OPENVK_ROOT_CONF["openvk"]["preferences"]["maintenanceMode"][$section])) {
+            throw new APIErrorException("This section is under maintenance", 10);
+        }
+    }
+
     private function logRequest(string $object, string $method): void
     {
-        $date   = date(DATE_COOKIE);
-        $params = json_encode($_REQUEST);
-        $log    = "[$date] $object.$method called with $params\r\n";
-        file_put_contents(OPENVK_ROOT . "/VKAPI/debug.log", $log, FILE_APPEND | LOCK_EX);
+        // Intentionally no-op: never write tokens/params to disk
     }
 
     private function fail(int $code, string $message, string $object, string $method): void
@@ -82,24 +100,27 @@ final class VKAPIPresenter extends OpenVKPresenter
     {
         parent::onStartup();
 
-        # idk, but in case we will ever support non-standard HTTP credential authflow
-        $origin = "*";
-        if (isset($_SERVER["HTTP_REFERER"])) {
-            $refOrigin = parse_url($_SERVER["HTTP_REFERER"], PHP_URL_SCHEME) . "://" . parse_url($_SERVER["HTTP_REFERER"], PHP_URL_HOST);
-            if ($refOrigin !== false) {
-                $origin = $refOrigin;
+        # Restrict CORS to same-site / mirrors — never reflect arbitrary Referer
+        $origin = ovk_scheme(true) . ($_SERVER["SERVER_NAME"] ?? "localhost");
+        if (isset($_SERVER["HTTP_ORIGIN"])) {
+            $reqOrigin = $_SERVER["HTTP_ORIGIN"];
+            $parsed    = parse_url($reqOrigin);
+            if (is_array($parsed) && !empty($parsed["host"])) {
+                $candidate = ($parsed["scheme"] ?? "https") . "://" . $parsed["host"]
+                    . (isset($parsed["port"]) ? ":" . $parsed["port"] : "");
+                if (ovk_oauth_redirect_allowed($candidate . "/")) {
+                    $origin = $candidate;
+                }
             }
         }
 
-        if (!is_null($this->queryParam("requestPort"))) {
-            $origin .= ":" . ((int) $this->queryParam("requestPort"));
-        }
-
         header("Access-Control-Allow-Origin: $origin");
+        header("Vary: Origin");
 
         if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
             header("Access-Control-Allow-Methods: POST, PUT, DELETE");
-            header("Access-Control-Allow-Headers: " . $_SERVER["HTTP_ACCESS_CONTROL_REQUEST_HEADERS"]);
+            $reqHeaders = $_SERVER["HTTP_ACCESS_CONTROL_REQUEST_HEADERS"] ?? "Content-Type";
+            header("Access-Control-Allow-Headers: " . $reqHeaders);
             header("Access-Control-Max-Age: -1");
             exit; # Terminate request processing as this is definitely a CORS preflight request.
         }
@@ -357,6 +378,8 @@ final class VKAPIPresenter extends OpenVKPresenter
      */
     private function callAPIMethod(string $object, string $method, array $params, $identity, $platform, ?bool &$hasRss = null)
     {
+        $this->mapSectionMaintenance($object);
+
         $object       = ucfirst(strtolower($object));
         $handlerClass = "openvk\\VKAPI\\Handlers\\$object";
         if (!class_exists($handlerClass)) {
@@ -446,6 +469,9 @@ final class VKAPIPresenter extends OpenVKPresenter
             ]);
 
             if ($callback) {
+                if (!ovk_jsonp_callback_valid($callback)) {
+                    $this->fail(100, "Invalid callback parameter", $object, $method);
+                }
                 $result = $callback . '(' . $result . ')';
                 header('Content-Type: application/javascript');
             } else {
@@ -502,6 +528,9 @@ final class VKAPIPresenter extends OpenVKPresenter
 
         $result = json_encode($payload);
         if ($callback) {
+            if (!ovk_jsonp_callback_valid($callback)) {
+                $this->fail(100, "Invalid callback parameter", "execute", "");
+            }
             $result = $callback . '(' . $result . ')';
             header('Content-Type: application/javascript');
         } else {
@@ -617,6 +646,10 @@ final class VKAPIPresenter extends OpenVKPresenter
             $parsedUrl = (object) parse_url($url);
             if ($parsedUrl->scheme != 'https' && $parsedUrl->scheme != 'http') {
                 exit("<b>Error:</b> redirect_uri should either point to about:blank or to a web resource.");
+            }
+
+            if (!ovk_oauth_redirect_allowed($url)) {
+                exit("<b>Error:</b> redirect_uri host is not allowed for this instance.");
             }
 
             $origin = "$parsedUrl->scheme://$parsedUrl->host";

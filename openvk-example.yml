@@ -34,14 +34,16 @@ openvk:
         apps:
             withdrawTax: 8
         security:
-            requireEmail: false
+            requireEmail: true
             requirePhone: false
             forcePhoneVerification: false
-            forceEmailVerification: false
+            forceEmailVerification: true
             forceStrongPassword: false
             disablePasswordRestoring: true # turn this off if you have configured e-mail sending correctly
             disableSubAddressing: false # aka plus sign
             enableSu: true
+            oauthRedirectHosts: [] # extra hosts allowed for OAuth redirect_uri (in addition to mirrors + canonicalHost)
+            canonicalHost: null # e.g. "ovk.to" — used for absolute URLs when Host header is not in mirrors
             rateLimits:
                 actions: 5
                 time: 20
@@ -56,7 +58,7 @@ openvk:
                         groups.create: 5
                         groups.sub: 50
                         friends.outgoing_sub: 25
-                        wall.post: 5000
+                        wall.post: 50
                         gifts.send: 30
         blacklists:
             limit: 100

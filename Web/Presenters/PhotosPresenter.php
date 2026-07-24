@@ -235,12 +235,42 @@ final class PhotosPresenter extends OpenVKPresenter
 
     public function renderThumbnail($id, $size): void
     {
+        if (!is_string($size) || !preg_match('/^[a-z]{1,16}$/', $size)) {
+            $this->notFound();
+        }
+
         $photo = $this->photos->get($id);
         if (!$photo || $photo->isDeleted()) {
             $this->notFound();
         }
 
-        if (!$photo->forceSize($size)) {
+        if (!$photo->canBeViewedBy($this->user->identity)) {
+            $this->notFound();
+        }
+
+        if ($photo->needsForceSize($size)) {
+            $ip  = (new \openvk\Web\Models\Repositories\IPs())->get(CONNECTING_IP);
+            $res = $ip->rateLimit(3);
+            if (!($res === \openvk\Web\Models\Entities\IP::RL_RESET || $res === \openvk\Web\Models\Entities\IP::RL_CANEXEC)) {
+                header("HTTP/1.1 429 Too Many Requests");
+                header("Retry-After: 20");
+                exit("Too Many Requests");
+            }
+
+            if (!\openvk\Web\Util\CostlyOpGuard::acquire("imagick_thumb", 2)) {
+                header("HTTP/1.1 503 Service Unavailable");
+                header("Retry-After: 5");
+                exit("Busy");
+            }
+
+            try {
+                if (!$photo->forceSize($size)) {
+                    chandler_http_panic(588, "Gone", "This thumbnail cannot be generated due to server misconfiguration");
+                }
+            } finally {
+                \openvk\Web\Util\CostlyOpGuard::release("imagick_thumb");
+            }
+        } elseif (!$photo->forceSize($size)) {
             chandler_http_panic(588, "Gone", "This thumbnail cannot be generated due to server misconfiguration");
         }
 

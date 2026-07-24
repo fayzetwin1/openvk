@@ -157,6 +157,7 @@ final class SupportPresenter extends OpenVKPresenter
     {
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
+        $this->assertNoCSRF();
 
         if (!empty($id)) {
             $ticket = $this->tickets->get($id);
@@ -184,6 +185,8 @@ final class SupportPresenter extends OpenVKPresenter
 
     public function renderMakeComment(int $id): void
     {
+        $this->assertUserLoggedIn();
+        $this->assertNoCSRF();
         $ticket = $this->tickets->get($id);
 
         if ($ticket->isDeleted() === 1 || $ticket->getType() === 2 || $ticket->getUserId() !== $this->user->id) {
@@ -249,6 +252,7 @@ final class SupportPresenter extends OpenVKPresenter
         $ticket = $this->tickets->get($id);
 
         if ($_SERVER["REQUEST_METHOD"] === "POST") {
+            $this->assertNoCSRF();
             $this->willExecuteWriteAction();
 
             $helpdeskChat = OPENVK_ROOT_CONF["openvk"]["credentials"]["telegram"]["helpdeskChat"];
@@ -322,6 +326,10 @@ final class SupportPresenter extends OpenVKPresenter
 
     public function renderKnowledgeBaseArticle(string $name): void
     {
+        if (!preg_match('/^[a-zA-Z0-9_-]+$/', $name)) {
+            $this->notFound();
+        }
+
         $lang = Session::i()->get("lang", "ru");
         $base = OPENVK_ROOT . "/data/knowledgebase";
         if (file_exists("$base/$name.$lang.md")) {

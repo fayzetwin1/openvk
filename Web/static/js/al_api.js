@@ -10,6 +10,11 @@ window.API = new Proxy(Object.create(null), {
                         let xhr = new XMLHttpRequest();
                         xhr.open("POST", "/rpc", true);
                         xhr.responseType = "arraybuffer";
+                        let csrf = (document.querySelector("meta[name=csrf]") || {}).content
+                            || (window.router && window.router.csrf)
+                            || "";
+                        if (csrf)
+                            xhr.setRequestHeader("X-CSRF-Token", csrf);
 
                         xhr.onload = e => {
                             try {
@@ -27,11 +32,14 @@ window.API = new Proxy(Object.create(null), {
                             }
                         };
 
-                        xhr.send(msgpack.encode({
+                        let payload = {
                             "brpc": 1,
                             "method": `${classSymbol.toString()}.${method}`,
                             "params": args
-                        }));
+                        };
+                        if (csrf)
+                            payload.hash = csrf;
+                        xhr.send(msgpack.encode(payload));
                     });
                 })
             }

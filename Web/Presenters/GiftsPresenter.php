@@ -106,15 +106,27 @@ final class GiftsPresenter extends OpenVKPresenter
             return;
         }
 
+        $this->assertNoCSRF();
+
         if (\openvk\Web\Util\EventRateLimiter::i()->tryToLimit($this->user->identity, "gifts.send")) {
             $this->flashFail("err", tr("error"), tr("limit_exceed_exception"));
+        }
+
+        $price = $gift->getPrice();
+        $conn  = \Chandler\Database\DatabaseConnection::i()->getConnection();
+        $result = $conn->query(
+            "UPDATE `profiles` SET `coins` = `coins` - ? WHERE `id` = ? AND `coins` >= ?",
+            $price,
+            $this->user->id,
+            $price
+        );
+        if ($result->getRowCount() < 1) {
+            $this->flashFail("err", tr("error_when_gifting"), tr("error_no_money"));
         }
 
         $comment      = empty($c = $this->postParam("comment")) ? null : $c;
         $notification = new GiftNotification($user, $this->user->identity, $gift, $comment);
         $notification->emit();
-        $this->user->identity->setCoins($coinsLeft);
-        $this->user->identity->save();
         $user->gift($this->user->identity, $gift, $comment, !is_null($this->postParam("anonymous")));
         $gift->used();
 

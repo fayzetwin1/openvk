@@ -105,7 +105,8 @@ class Post extends Postable
             return $orig_source;
         }
 
-        return $this->formatLinks($orig_source);
+        $safe = htmlspecialchars($orig_source, ENT_QUOTES | ENT_DISALLOWED | ENT_XHTML, "UTF-8");
+        return $this->formatLinks($safe);
     }
 
     public function setSource(string $source)

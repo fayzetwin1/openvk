@@ -156,10 +156,18 @@ final class GroupPresenter extends OpenVKPresenter
 
     public function renderModifyAdmin(int $id): void
     {
-        $user = is_null($this->queryParam("user")) ? $this->postParam("user") : $this->queryParam("user");
+        $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction();
+        $this->assertNoCSRF();
+
+        if ($_SERVER["REQUEST_METHOD"] !== "POST") {
+            $this->badRequest();
+        }
+
+        $user = $this->postParam("user");
         $comment = $this->postParam("comment");
         $removeComment = $this->postParam("removeComment") === "1";
-        $hidden = ["0" => false, "1" => true][$this->queryParam("hidden")] ?? null;
+        $hidden = ["0" => false, "1" => true][$this->postParam("hidden")] ?? null;
         //$index = $this->queryParam("index");
         if (!$user) {
             $this->badRequest();

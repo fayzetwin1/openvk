@@ -86,13 +86,17 @@
     {var $user    = $x instanceof $Manager ? $x->getUser() : $x}
     {var $manager = $x instanceof $Manager ? $x : $club->getManager($user, !$club->canBeModifiedBy($thisUser))}
     {if $club->canBeModifiedBy($thisUser ?? NULL)}
-        <a class="profile_link" href="/club{$club->getId()}/setAdmin?user={$user->getId()}&hash={rawurlencode($csrfToken)}" n:if="$club->getOwner()->getId() !== $user->getId()">
-            {if $manager}
-                {_devote}
-            {else}
-                {_promote_to_admin}
-            {/if}
-        </a>
+        <form method="POST" action="/club{$club->getId()}/setAdmin" style="display:inline" n:if="$club->getOwner()->getId() !== $user->getId()">
+            <input type="hidden" name="user" value="{$user->getId()}" />
+            <input type="hidden" name="hash" value="{$csrfToken}" />
+            <button type="submit" class="profile_link" style="border:0;background:none;padding:0;cursor:pointer;font:inherit;color:inherit">
+                {if $manager}
+                    {_devote}
+                {else}
+                    {_promote_to_admin}
+                {/if}
+            </button>
+        </form>
         {if $club->getOwner()->getId() != $user->getId() && $manager && $thisUser->getId() == $club->getOwner()->getId()}
             <a class="profile_link" href="javascript:changeOwner({$club->getId()}, {$user->getId()}, '{$user->getCanonicalName()}')">
                 {_promote_to_owner}
@@ -107,14 +111,24 @@
             {_set_comment}
         </a>
         {if $manager}
-            <a class="profile_link" href="/club{$club->getId()}/setAdmin?user={$user->getId()}&hidden={(int) !$manager->isHidden()}&hash={rawurlencode($csrfToken)}">
-                {if $manager->isHidden()}{_hidden_yes}{else}{_hidden_no}{/if}
-            </a>
+            <form method="POST" action="/club{$club->getId()}/setAdmin" style="display:inline">
+                <input type="hidden" name="user" value="{$user->getId()}" />
+                <input type="hidden" name="hidden" value="{(int) !$manager->isHidden()}" />
+                <input type="hidden" name="hash" value="{$csrfToken}" />
+                <button type="submit" class="profile_link" style="border:0;background:none;padding:0;cursor:pointer;font:inherit;color:inherit">
+                    {if $manager->isHidden()}{_hidden_yes}{else}{_hidden_no}{/if}
+                </button>
+            </form>
         {/if}
         {if $club->getOwner()->getId() == $user->getId()}
-            <a class="profile_link" href="/club{$club->getId()}/setAdmin?user={$user->getId()}&hidden={(int) !$club->isOwnerHidden()}&hash={rawurlencode($csrfToken)}">
-                {if $club->isOwnerHidden()}{_hidden_yes}{else}{_hidden_no}{/if}
-            </a>
+            <form method="POST" action="/club{$club->getId()}/setAdmin" style="display:inline">
+                <input type="hidden" name="user" value="{$user->getId()}" />
+                <input type="hidden" name="hidden" value="{(int) !$club->isOwnerHidden()}" />
+                <input type="hidden" name="hash" value="{$csrfToken}" />
+                <button type="submit" class="profile_link" style="border:0;background:none;padding:0;cursor:pointer;font:inherit;color:inherit">
+                    {if $club->isOwnerHidden()}{_hidden_yes}{else}{_hidden_no}{/if}
+                </button>
+            </form>
         {/if}
     {/if}
 {/block}

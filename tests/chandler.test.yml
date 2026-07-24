@@ -17,6 +17,8 @@ chandler:
         user: "openvk"
         password: "openvk"
 
+    redisUrl: "tcp://redis:6379"
+
     security:
         secret: "test-secret-do-not-use-in-production-1234567890abcdef"
         csrfProtection: "permissive"

@@ -49,9 +49,12 @@
                 <a class="aui-button aui-button-primary" href="/admin/chandler/groups/{$group->id}?act=members">
                     <span class="aui-icon aui-icon-small aui-iconfont-group">{_members}</span>
                 </a>
-                <a class="aui-button aui-button-secondary" href="/admin/chandler/groups/{$group->id}?act=delete">
-                    <span class="aui-icon aui-icon-small aui-iconfont-delete">{_delete}</span>
-                </a>
+                <form method="POST" action="/admin/chandler/groups/{$group->id}?act=delete" style="display: inline;">
+                    <input type="hidden" name="hash" value="{$csrfToken}" />
+                    <button class="aui-button aui-button-secondary" type="submit">
+                        <span class="aui-icon aui-icon-small aui-iconfont-delete">{_delete}</span>
+                    </button>
+                </form>
             </td>
         </tr>
     </tbody>

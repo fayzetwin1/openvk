@@ -1,0 +1,114 @@
+OpenVK security STR report
+BASE_URL=http://127.0.0.1:8088
+generated=2026-07-24T11:33:39+03:00
+
+OpenVK security STR — BASE_URL=http://127.0.0.1:8088
+Repo: /root/openvk
+
+═══ P0-1 JSONP reflected XSS ═══
+[OK]   P0-1 JSONP — callback not reflected as executable JS
+
+═══ P0-2a Away open redirect ═══
+[OK]   P0-2a Away — interstitial (no auto Location to example.com)
+
+═══ P0-2b Login jReturnTo open redirect (URL accepts external) ═══
+[OK]   P0-2b jReturnTo — external URL not embedded as return target
+
+═══ P0-2c Language jReturnTo ═══
+[MANUAL] P0-2c Language — try /language?lg=en&hash=CSRF&jReturnTo=https://evil.example/ with valid CSRF
+
+═══ P0-2d ImageFilter open redirect (when hotlinking disabled=false) ═══
+[OK]   P0-2d ImageFilter — hotlink protection on (placeholder/allowlist)
+
+═══ P0-3 OAuth unrestricted redirect_uri ═══
+[SKIP] P0-3 OAuth — unreachable
+
+═══ P0-4a Photo thumbnail IDOR ═══
+[SKIP] P0-4a Thumbnail — set PHOTO_ID (private photo numeric id)
+[MANUAL] P0-4a Upload private photo as user A, open /photos/thumbnails/{id}_x.jpeg as user B
+
+═══ P0-4b iapi getPhotosFromPost privacy leak ═══
+[SKIP] P0-4b iapi — set POST_OWNER and POST_ID (closed wall post with photo)
+[MANUAL] P0-4b POST /iapi/getPhotosFromPost/{owner}_{id} parentType=post without access
+
+═══ P0-5 Admin Chandler ACL SQLi / CSRF ═══
+[SKIP] P0-5a SQLi probe — set STR_ALLOW_SQL_PROBE=1 on staging + admin cookie
+[MANUAL] P0-5b CSRF GET — as admin open: http://127.0.0.1:8088/admin/chandler/groups/{UUID}?act=removeMember&uid={GUID}
+       Or <img src="…"> while admin session is active
+
+═══ P0-6 NoSpam raw WHERE SQLi ═══
+[SKIP] P0-6 — set STR_ALLOW_SQL_PROBE=1 + Ban-write cookie
+[MANUAL] P0-6 In /noSpam WHERE field try: 1=1 — should not run arbitrary SQL after fix
+
+═══ P0-7 CSRF /rpc Apps.getRegularToken ═══
+[MANUAL] P0-7 From evil origin POST MessagePack to http://127.0.0.1:8088/rpc method Apps.getRegularToken with victim cookies
+       Easiest demo: DevTools → copy Allow request from /authorize → replay without CSRF hash
+       Cookie present — still need msgpack client for auto check (left MANUAL)
+
+═══ P0-8 Club setAdmin CSRF (GET) ═══
+[MANUAL] P0-8 Set CLUB_ID + ATTACKER_USER_ID — then open /club{N}/setAdmin?user={id} as owner
+
+═══ P0-8b Messenger longpoll DoS (/im) ═══
+[OK]   P0-8b static — LongpollGuard + IP budget on /im|/nim
+       Firing 10 parallel GETs to /im12 (timeout 20s each)…
+[OK]   P0-8b live — homepage still 000000 after burst (guards present)
+
+═══ P0-8c Hashtag feed unauth DB/memory DoS (NEW) ═══
+[OK]   P0-8c Hashtag count uses FULLTEXT MATCH
+       Soft probe: 5× /feed/hashtag/a (not a full raid)
+
+═══ P0-8d Thumbnail forceSize Imagick DoS (extends P0-4a) ═══
+[OK]   P0-8d Thumbnail — rateLimit/CostlyOpGuard around forceSize
+
+═══ P1-9 Longpoll XOR key forge → IDOR ═══
+[SKIP] P1-9 — set ACCESS_TOKEN + TARGET_USER_ID
+[MANUAL] P1-9 messages.getLongPollServer → forge key for other id → GET /nim{B}?act=a_check&key=…
+
+═══ P1-10 Post copyright/source stored XSS ═══
+[OK]   P1-10 getSource/formatLinks pattern not found (maybe fixed)
+[MANUAL] P1-10 Create post copyright: http://evil.example"><img src=x onerror=alert(1)>
+
+═══ P1-11 VKAPI CORS reflects Referer ═══
+[SKIP] P1-11 CORS — no ACAO header (HTTP 000)
+
+═══ P1-12 CSRF on coins / wall / gifts / 2FA ═══
+[MANUAL] P1-12 Open evil_csrf.generated.html while logged in as victim (forms without hash)
+       Covered: club setAdmin, illustrative coins/wall endpoints — adjust paths to your routes
+
+═══ P1-13 SMS OTP 16-bit entropy ═══
+[OK]   P1-13 SMS OTP — uses random_int in setPhoneWithVerification
+
+═══ P1-14 Login without rate limit (soft probe) ═══
+[OK]   P1-14 Login — AuthPresenter applies IP rateLimit on POST
+
+═══ P1-15a Public /admin/sandbox ═══
+[SKIP] P1-15a sandbox — unreachable
+
+═══ P1-15b Blob path check no-op (static) ═══
+[OK]   P1-15b Blob — no-op strpos not found (maybe fixed)
+
+═══ P1-15d Shell args unsescaped (static) ═══
+[OK]   P1-15d Shell — vulnerable implode/exec pattern not found
+
+═══ P1-15e Knowledge base path ═══
+[OK]   P1-15e KB — traversal probe did not leak (HTTP 000)
+[MANUAL] P1-15c Support CSRF — delete ticket without hash under victim session
+
+═══ Residual High (static / soft) ═══
+[SKIP] R-17 Apps.pay — pattern not found
+[MANUAL] R-16 Commerce TOCTOU — parallel coin transfer/gift (no row lock) — race on staging
+[SKIP] R-18 — review VKAPIPresenter presenterName manually
+[OK]   R-19 Host header — evil host not reflected in absolute URLs
+       Wrote /root/openvk/tests/security/evil_csrf.generated.html
+
+═══ 5-minute demo checklist for the team ═══
+1. Show [VULN] lines above (JSONP, Away, Sandbox, CORS, OAuth, static greps)
+2. Browser: http://127.0.0.1:8088/method/utils.getServerTime?callback=alert(1)//
+3. Browser: http://127.0.0.1:8088/away.php?to=https://example.com/
+4. If PHOTO_ID set — thumbnail IDOR; if POST_* — iapi leak
+5. Open tests/security/evil_csrf.generated.html as club owner (optional)
+6. Do NOT run STR_ALLOW_DOS=1 on shared prod without warning
+
+═══ Summary ═══
+VULN=0  OK=15  SKIP=10  MANUAL=12
+No automatic VULN hits (checks may be SKIP/MANUAL).

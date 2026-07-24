@@ -1302,7 +1302,7 @@ class User extends RowModel
 
     public function setPhoneWithVerification(string $phone): string
     {
-        $code = unpack("S", openssl_random_pseudo_bytes(2))[1];
+        $code = (string) random_int(100000, 999999);
 
         if ($this->hasPendingNumberChange()) {
             DatabaseConnection::i()->getContext()

@@ -106,9 +106,13 @@
                         <td>{$user->getShortCode() ?? "(" . tr("none") . ")"}</td>
                         <td>{$user->getRegistrationTime()}</td>
                         <td>
-                            <a class="aui-button aui-button-primary" href="/admin/chandler/groups/{$group->id}?act=removeMember&uid={$user->getChandlerGUID()}">
-                                <span class="aui-icon aui-icon-small aui-iconfont-delete">{_delete}</span>
-                            </a>
+                            <form method="POST" action="/admin/chandler/groups/{$group->id}?act=removeMember" style="display: inline;">
+                                <input type="hidden" name="hash" value="{$csrfToken}" />
+                                <input type="hidden" name="uid" value="{$user->getChandlerGUID()}" />
+                                <button class="aui-button aui-button-primary" type="submit">
+                                    <span class="aui-icon aui-icon-small aui-iconfont-delete">{_delete}</span>
+                                </button>
+                            </form>
                             <a class="aui-button aui-button-primary" href="/admin/users/id{$user->getId()}">
                                 <span class="aui-icon aui-icon-small aui-iconfont-new-edit">{_edit}</span>
                             </a>
@@ -164,9 +168,14 @@
                     <td>{$perm->model}</td>
                     <td>{$perm->permission}</td>
                     <td>
-                        <a class="aui-button aui-button-primary" href="/admin/chandler/groups/{$perm->group}?act=removePermission&model={$perm->model}&perm={$perm->permission}">
-                            <span class="aui-icon aui-icon-small aui-iconfont-delete">{_edit}</span>
-                        </a>
+                        <form method="POST" action="/admin/chandler/groups/{$perm->group}?act=removePermission" style="display: inline;">
+                            <input type="hidden" name="hash" value="{$csrfToken}" />
+                            <input type="hidden" name="model" value="{$perm->model}" />
+                            <input type="hidden" name="perm" value="{$perm->permission}" />
+                            <button class="aui-button aui-button-primary" type="submit">
+                                <span class="aui-icon aui-icon-small aui-iconfont-delete">{_edit}</span>
+                            </button>
+                        </form>
                     </td>
                 </tr>
             </tbody>

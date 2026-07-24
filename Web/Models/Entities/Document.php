@@ -49,10 +49,10 @@ class Document extends Media
             default:
             case "default":
             case "basic":
-                return "http://" . $_SERVER['HTTP_HOST'] . "/blob_" . substr($hash, 0, 2) . "/$hash.$filetype";
+                return ovk_scheme(true) . $_SERVER['HTTP_HOST'] . "/blob_" . substr($hash, 0, 2) . "/$hash.$filetype";
                 break;
             case "accelerated":
-                return "http://" . $_SERVER['HTTP_HOST'] . "/openvk-datastore/$hash.$filetype";
+                return ovk_scheme(true) . $_SERVER['HTTP_HOST'] . "/openvk-datastore/$hash.$filetype";
                 break;
             case "server":
                 $settings = (object) OPENVK_ROOT_CONF["openvk"]["preferences"]["uploads"]["server"];

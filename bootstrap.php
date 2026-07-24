@@ -453,6 +453,197 @@ function escape_html(string $unsafe): string
     return htmlspecialchars($unsafe, ENT_DISALLOWED | ENT_XHTML);
 }
 
+/**
+ * Hostnames trusted for this instance (mirrors + canonicalHost).
+ *
+ * @return list<string>
+ */
+function ovk_allowed_hosts(): array
+{
+    $allowed = [];
+
+    $canonical = OPENVK_ROOT_CONF["openvk"]["preferences"]["security"]["canonicalHost"] ?? null;
+    if (is_string($canonical) && $canonical !== "") {
+        $allowed[] = strtolower(str_replace("www.", "", explode(":", $canonical)[0]));
+    }
+
+    $mirrors = OPENVK_ROOT_CONF["openvk"]["mirrors"] ?? [];
+    if (is_array($mirrors)) {
+        foreach ($mirrors as $m) {
+            $allowed[] = strtolower(str_replace("www.", "", explode(":", (string) $m)[0]));
+        }
+    }
+
+    return array_values(array_unique(array_filter($allowed)));
+}
+
+function ovk_host_is_loopback_or_private(string $host): bool
+{
+    $host = strtolower(explode(":", $host)[0]);
+    if ($host === "localhost" || str_ends_with($host, ".localhost") || str_ends_with($host, ".local")) {
+        return true;
+    }
+
+    if (filter_var($host, FILTER_VALIDATE_IP)) {
+        return filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false;
+    }
+
+    return false;
+}
+
+/**
+ * Public hostname for absolute URLs. Ignores attacker-controlled Host when not allowlisted.
+ */
+function ovk_public_host(): string
+{
+    $raw = (string) ($_SERVER["HTTP_HOST"] ?? $_SERVER["SERVER_NAME"] ?? "localhost");
+    $hostOnly = strtolower(str_replace("www.", "", explode(":", $raw)[0]));
+    $allowed = ovk_allowed_hosts();
+
+    if (in_array($hostOnly, $allowed, true) || ovk_host_is_loopback_or_private($hostOnly)) {
+        return $raw;
+    }
+
+    $canonical = OPENVK_ROOT_CONF["openvk"]["preferences"]["security"]["canonicalHost"] ?? null;
+    if (is_string($canonical) && $canonical !== "") {
+        return $canonical;
+    }
+
+    if (isset($allowed[0])) {
+        return $allowed[0];
+    }
+
+    $server = $_SERVER["SERVER_NAME"] ?? "localhost";
+
+    return is_string($server) && $server !== "" ? $server : "localhost";
+}
+
+/**
+ * Replace tainted Host with a trusted public host for the rest of the request.
+ */
+function ovk_pin_public_host(): void
+{
+    if (PHP_SAPI === "cli") {
+        return;
+    }
+
+    $host = ovk_public_host();
+    $_SERVER["HTTP_HOST"] = $host;
+    $_SERVER["SERVER_NAME"] = explode(":", $host)[0];
+}
+
+/**
+ * Same-site relative path only (for jReturnTo / flashFail / post-login redirects).
+ * Rejects scheme-relative "//evil", backslashes, absolute URLs, and nested http(s) embeds.
+ */
+function ovk_safe_internal_redirect(?string $url, string $fallback = "/"): string
+{
+    if ($url === null || $url === "") {
+        return $fallback;
+    }
+
+    $url = rawurldecode($url);
+    if ($url === "" || $url[0] !== "/" || str_starts_with($url, "//") || str_contains($url, "\\")) {
+        return $fallback;
+    }
+
+    if (preg_match('#^[a-zA-Z][a-zA-Z0-9+.-]*:#', $url)) {
+        return $fallback;
+    }
+
+    // Nested open-redirect: /login?jReturnTo=https://evil (after rawurldecode)
+    if (preg_match('#https?:#i', $url)) {
+        return $fallback;
+    }
+
+    return $url;
+}
+
+/**
+ * External http(s) URL only (for away.php). Returns null if unsafe.
+ */
+function ovk_safe_external_url(?string $url): ?string
+{
+    if ($url === null || $url === "") {
+        return null;
+    }
+
+    $url = rawurldecode(trim($url));
+    if ($url === "" || preg_match('#^\s*javascript:#i', $url) || preg_match('#^\s*data:#i', $url)) {
+        return null;
+    }
+
+    if (!filter_var($url, FILTER_VALIDATE_URL)) {
+        return null;
+    }
+
+    $parts = parse_url($url);
+    if (!is_array($parts) || !isset($parts["scheme"], $parts["host"])) {
+        return null;
+    }
+
+    $scheme = strtolower($parts["scheme"]);
+    if ($scheme !== "http" && $scheme !== "https") {
+        return null;
+    }
+
+    if (isset($parts["user"]) || isset($parts["pass"])) {
+        return null;
+    }
+
+    return $url;
+}
+
+/**
+ * Whether redirect_uri host is allowed for OAuth (instance, mirrors, config allowlist).
+ */
+function ovk_oauth_redirect_allowed(string $url): bool
+{
+    if ($url === "about:blank") {
+        return true;
+    }
+
+    if (!filter_var($url, FILTER_VALIDATE_URL)) {
+        return false;
+    }
+
+    $parts = parse_url($url);
+    if (!is_array($parts) || empty($parts["host"]) || empty($parts["scheme"])) {
+        return false;
+    }
+
+    $scheme = strtolower($parts["scheme"]);
+    if ($scheme !== "http" && $scheme !== "https") {
+        return false;
+    }
+
+    $host = strtolower(str_replace("www.", "", $parts["host"]));
+    $allowed = ovk_allowed_hosts();
+
+    $extra = OPENVK_ROOT_CONF["openvk"]["preferences"]["security"]["oauthRedirectHosts"] ?? [];
+    if (is_array($extra)) {
+        foreach ($extra as $m) {
+            $allowed[] = strtolower(str_replace("www.", "", explode(":", (string) $m)[0]));
+        }
+    }
+
+    // Dev / direct-IP access: allow loopback Host as OAuth redirect target too.
+    if (ovk_host_is_loopback_or_private($host)) {
+        $allowed[] = $host;
+    }
+
+    return in_array($host, array_values(array_unique(array_filter($allowed))), true);
+}
+
+function ovk_jsonp_callback_valid(?string $callback): bool
+{
+    if ($callback === null || $callback === "") {
+        return false;
+    }
+
+    return (bool) preg_match('/^[A-Za-z_$][0-9A-Za-z_$]*$/', $callback);
+}
+
 function readable_filesize($bytes, $precision = 2): string
 {
     $units = ['B', 'Kb', 'Mb', 'Gb', 'Tb', 'Pb'];

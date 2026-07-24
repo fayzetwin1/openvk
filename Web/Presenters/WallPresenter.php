@@ -289,8 +289,24 @@ final class WallPresenter extends OpenVKPresenter
     public function renderHashtagFeed($hashtag): void
     {
         $hashtag = rawurldecode('' . $hashtag); // simpler than converting it with countless ifs
+        if (mb_strlen($hashtag) > 64 || $hashtag === "") {
+            $this->notFound();
+        }
 
-        $page  = (int) ($_GET["p"] ?? 1);
+        $page = (int) ($_GET["p"] ?? 1);
+        if ($page < 1 || $page > 100) {
+            $this->notFound();
+        }
+
+        // Unauthenticated hashtag crawl is a cheap DB DoS — charge IP budget.
+        $ip  = (new \openvk\Web\Models\Repositories\IPs())->get(CONNECTING_IP);
+        $res = $ip->rateLimit(2);
+        if (!($res === \openvk\Web\Models\Entities\IP::RL_RESET || $res === \openvk\Web\Models\Entities\IP::RL_CANEXEC)) {
+            header("HTTP/1.1 429 Too Many Requests");
+            header("Retry-After: 20");
+            exit("Too Many Requests");
+        }
+
         $posts = $this->posts->getPostsByHashtag($hashtag, $page);
         $count = $this->posts->getPostCountByHashtag($hashtag);
 
@@ -628,6 +644,7 @@ final class WallPresenter extends OpenVKPresenter
     {
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
+        $this->assertNoCSRF();
 
         $post = $this->posts->getPostById($wall, $post_id, true);
         if (!$post) {
@@ -765,6 +782,7 @@ final class WallPresenter extends OpenVKPresenter
     {
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
+        $this->assertNoCSRF();
 
         $post = $this->posts->getPostById($wall, $post_id);
         if (!$post) {
@@ -793,6 +811,7 @@ final class WallPresenter extends OpenVKPresenter
     {
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction(true);
+        $this->assertNoCSRF();
 
         if ($_SERVER["REQUEST_METHOD"] !== "POST") {
             header("HTTP/1.1 405 Method Not Allowed");
@@ -856,6 +875,7 @@ final class WallPresenter extends OpenVKPresenter
     {
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction(true);
+        $this->assertNoCSRF();
 
         if ($_SERVER["REQUEST_METHOD"] !== "POST") {
             header("HTTP/1.1 405 Method Not Allowed");

@@ -62,19 +62,23 @@ class Apps implements Handler
             return;
         }
 
-        if ($amount < 0) {
+        if ($amount <= 0) {
             $reject(552, "Payment amount is invalid");
             return;
         }
 
-        $coinsLeft = $this->user->getCoins() - $amount;
-        if ($coinsLeft < 0) {
+        $conn = \Chandler\Database\DatabaseConnection::i()->getConnection();
+        $result = $conn->query(
+            "UPDATE `profiles` SET `coins` = `coins` - ? WHERE `id` = ? AND `coins` >= ?",
+            $amount,
+            $this->user->getId(),
+            $amount
+        );
+        if ($result->getRowCount() < 1) {
             $reject(41, "Not enough money");
             return;
         }
 
-        $this->user->setCoins($coinsLeft);
-        $this->user->save();
         $app->addCoins($amount);
 
         $t = time();

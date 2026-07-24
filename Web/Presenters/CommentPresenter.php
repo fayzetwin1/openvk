@@ -43,13 +43,16 @@ final class CommentPresenter extends OpenVKPresenter
             ]);
         }
 
-        $this->redirect($_SERVER["HTTP_REFERER"]);
+        $this->redirect(ovk_safe_internal_redirect(
+            parse_url($_SERVER["HTTP_REFERER"] ?? "/", PHP_URL_PATH) ?: "/"
+        ));
     }
 
     public function renderMakeComment(string $repo, int $eId): void
     {
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
+        $this->assertNoCSRF();
 
         $repoClass = $this->models[$repo] ?? null;
         if (!$repoClass) {
@@ -172,6 +175,7 @@ final class CommentPresenter extends OpenVKPresenter
     {
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
+        $this->assertNoCSRF();
 
         $comment = (new Comments())->get($id);
         if (!$comment) {

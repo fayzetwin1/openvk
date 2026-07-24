@@ -168,20 +168,19 @@ final class NoSpamPresenter extends OpenVKPresenter
             $response = [];
             $processed = 0;
 
-            $where = $this->postParam("where");
-            $ip = addslashes($this->postParam("ip"));
-            $useragent = addslashes($this->postParam("useragent"));
-            $searchTerm = addslashes($this->postParam("q"));
-            $ts = (int) $this->postParam("ts");
-            $te = (int) $this->postParam("te");
-            $user = addslashes($this->postParam("user"));
-
-            if ($where) {
-                $where = explode(";", $where)[0];
+            if ($this->postParam("where")) {
+                $this->returnJson(["success" => false, "error" => "Raw WHERE is disabled for security"]);
             }
 
-            if (!$ip && !$useragent && !$searchTerm && !$ts && !$te && !$where && !$searchTerm && !$user) {
-                $this->returnJson(["success" => false, "error" => "Нет запроса. Заполните поле \"подстрока\" или введите запрос \"WHERE\" в поле под ним."]);
+            $ip = $this->postParam("ip");
+            $useragent = $this->postParam("useragent");
+            $searchTerm = $this->postParam("q");
+            $ts = (int) $this->postParam("ts");
+            $te = (int) $this->postParam("te");
+            $user = $this->postParam("user");
+
+            if (!$ip && !$useragent && !$searchTerm && !$ts && !$te && !$user) {
+                $this->returnJson(["success" => false, "error" => "Нет запроса. Заполните поле \"подстрока\" или параметры фильтра."]);
             }
 
             $models = explode(",", $this->postParam("models"));
@@ -203,43 +202,31 @@ final class NoSpamPresenter extends OpenVKPresenter
                 $table = $model->getTableName();
                 $columns = $db->getStructure()->getColumns($table);
 
-                if ($searchTerm) {
-                    $conditions = [];
+                $rows = [];
+
+                if ($ip || $useragent || $ts || $te || $user) {
+                    $rows = $this->searchByAdditionalParams($table, $searchTerm, $ip, $useragent, $ts, $te, $user);
+                } elseif ($searchTerm) {
+                    $sel = $db->table($table);
+                    $or = [];
                     $need_deleted = false;
                     foreach ($columns as $column) {
                         if ($column["name"] == "deleted") {
                             $need_deleted = true;
-                        } else {
-                            $conditions[] = "`$column[name]` REGEXP '$searchTerm'";
+                            continue;
                         }
+                        if (!preg_match('/^[a-zA-Z0-9_]+$/', $column["name"])) {
+                            continue;
+                        }
+                        $or[$column["name"] . " LIKE ?"] = "%" . $searchTerm . "%";
                     }
-                    $conditions = implode(" OR ", $conditions);
-
-                    $where = ($this->postParam("where") ? " AND ($conditions)" : "($conditions)");
+                    if ($or) {
+                        $sel->whereOr($or);
+                    }
                     if ($need_deleted) {
-                        $where .= " AND (`deleted` = 0)";
+                        $sel->where("deleted", 0);
                     }
-                }
-
-                $rows = [];
-
-                if (str_starts_with($where, " AND")) {
-                    if ($searchTerm && !$this->postParam("where")) {
-                        $where = substr_replace($where, "", 0, strlen(" AND"));
-                    } else {
-                        $where = "(" . $this->postParam("where") . ")" . $where;
-                    }
-                }
-
-                if ($ip || $useragent || $ts || $te || $user) {
-                    $rows = $this->searchByAdditionalParams($table, $where, $ip, $useragent, $ts, $te, $user);
-                } else {
-                    if (!$where) {
-                        $rows = [];
-                    } else {
-                        $result = $db->query("SELECT * FROM `$table` WHERE $where");
-                        $rows = $result->fetchAll();
-                    }
+                    $rows = $sel->fetchAll();
                 }
 
                 if (!in_array((int) $this->postParam("ban"), [1, 2, 3])) {
@@ -276,7 +263,7 @@ final class NoSpamPresenter extends OpenVKPresenter
                     if ($searchTerm) {
                         $log->setRegex($searchTerm);
                     } else {
-                        $log->setRequest($where);
+                        $log->setRequest("filters");
                     }
                     $log->setBan_Type((int) $this->postParam("ban"));
                     $log->setCount(count($rows));
@@ -351,74 +338,82 @@ final class NoSpamPresenter extends OpenVKPresenter
         }
     }
 
-    private function searchByAdditionalParams(?string $table = null, ?string $where = null, ?string $ip = null, ?string $useragent = null, ?int $ts = null, ?int $te = null, $user = null)
+    private function searchByAdditionalParams(?string $table = null, ?string $searchTerm = null, ?string $ip = null, ?string $useragent = null, ?int $ts = null, ?int $te = null, $user = null)
     {
         $db = DatabaseConnection::i()->getContext();
-        if ($table && ($ip || $useragent || $ts || $te || $user)) {
-            $conditions = [];
+        if (!$table || !($ip || $useragent || $ts || $te || $user)) {
+            return [];
+        }
 
-            if ($ip) {
-                $conditions[] = "`ip` REGEXP '$ip'";
+        $sel = $db->table("ChandlerLogs")->where("object_table", $table);
+        if ($table === "profiles") {
+            $sel->where("type", 0);
+        }
+
+        if ($ip) {
+            $sel->where("ip REGEXP ?", $ip);
+        }
+        if ($useragent) {
+            $sel->where("useragent REGEXP ?", $useragent);
+        }
+        if ($ts) {
+            $sel->where("ts < ?", $ts);
+        }
+        if ($te) {
+            $sel->where("ts > ?", $te);
+        }
+        if ($user) {
+            $users = new Users();
+
+            $_user = $users->getByChandlerUser((new ChandlerUsers())->getById($user))
+                ?? $users->get((int) $user)
+                ?? $users->getByAddress($user)
+                ?? null;
+
+            if ($_user) {
+                $sel->where("user", $_user->getChandlerGUID());
+            } elseif (!$ip && !$useragent && !$ts && !$te) {
+                return [];
             }
-            if ($useragent) {
-                $conditions[] = "`useragent` REGEXP '$useragent'";
-            }
-            if ($ts) {
-                $conditions[] = "`ts` < $ts";
-            }
-            if ($te) {
-                $conditions[] = "`ts` > $te";
-            }
-            if ($user) {
-                $users = new Users();
+        }
 
-                $_user = $users->getByChandlerUser((new ChandlerUsers())->getById($user))
-                    ?? $users->get((int) $user)
-                    ?? $users->getByAddress($user)
-                    ?? null;
+        $response = [];
+        foreach ($sel->group("object_id, object_model") as $logRow) {
+            $log = (new Logs())->get($logRow->id);
+            $object = $log->getObject()->unwrap();
 
-                if ($_user) {
-                    $conditions[] = "`user` = '" . $_user->getChandlerGUID() . "'";
-                }
+            if (!$object) {
+                continue;
             }
 
-            $whereStart = "WHERE `object_table` = '$table'";
-            if ($table === "profiles") {
-                $whereStart .= "AND `type` = 0";
-            }
-
-            $conditions = count($conditions) > 0 ? "AND (" . implode(" AND ", $conditions) . ")" : "";
-            $response = [];
-
-            if ($conditions) {
-                $logs = $db->query("SELECT * FROM `ChandlerLogs` $whereStart $conditions GROUP BY `object_id`, `object_model`");
-
-                foreach ($logs as $log) {
-                    $log = (new Logs())->get($log->id);
-                    $object = $log->getObject()->unwrap();
-
-                    if (!$object) {
+            if ($searchTerm) {
+                $match = $db->table($table)->where("id", $object->id);
+                $or = [];
+                $need_deleted = false;
+                foreach ($db->getStructure()->getColumns($table) as $column) {
+                    if ($column["name"] == "deleted") {
+                        $need_deleted = true;
                         continue;
                     }
-                    if ($where) {
-                        if (str_starts_with($where, " AND")) {
-                            $where = substr_replace($where, "", 0, strlen(" AND"));
-                        }
-
-                        $a = $db->query("SELECT * FROM `$table` WHERE $where")->fetchAll();
-                        foreach ($a as $o) {
-                            if ($object->id == $o["id"]) {
-                                $response[] = $object;
-                            }
-                        }
-
-                    } else {
-                        $response[] = $object;
+                    if (!preg_match('/^[a-zA-Z0-9_]+$/', $column["name"])) {
+                        continue;
                     }
+                    $or[$column["name"] . " LIKE ?"] = "%" . $searchTerm . "%";
+                }
+                if ($or) {
+                    $match->whereOr($or);
+                }
+                if ($need_deleted) {
+                    $match->where("deleted", 0);
+                }
+                if (!$match->fetch()) {
+                    continue;
                 }
             }
 
-            return $response;
+            $response[] = $object;
         }
+
+        return $response;
     }
 }

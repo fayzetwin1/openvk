@@ -5,8 +5,9 @@ chandler:
     
     preferences:
         appendExtension: "xhtml"
+        # Prefer firewalling this path in production; keep exposeChandler false
         adminUrl: "/chandlerd"
-        exposeChandler: true
+        exposeChandler: false
         logs:
             enabled: true
             entitiesNamespace: "openvk\\Web\\Models\\Entities\\"
@@ -21,8 +22,9 @@ chandler:
         password: "openvk"
     
     security:
-        secret: "e7oltodd7kx2ifgxcfractxp8pq4ffd1ktkxrjpv80hsqe4t6josth9znuznhpvedd32bo0msj4l6ycjx2fj8f77hnpfcejsxjgfbs2k0lpqpb9dkf0txkwtmh4j3tvs"
-        csrfProtection: "permissive"
+        # MUST be unique per deployment — do not reuse example secrets
+        secret: "CHANGE_ME_TO_A_LONG_RANDOM_SECRET"
+        csrfProtection: "strict"
         extendedValidation: false
         sessionDuration: 14
 

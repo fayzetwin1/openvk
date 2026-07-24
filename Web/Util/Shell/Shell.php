@@ -56,7 +56,8 @@ class Shell
             throw new Exceptions\UnknownCommandException($name);
         }
 
-        $command = implode(" ", array_merge([$name], $arguments));
+        $escapedArgs = array_map("escapeshellarg", $arguments);
+        $command     = implode(" ", array_merge([$name], $escapedArgs));
 
         return new class ($command) {
             private $command;
@@ -71,8 +72,7 @@ class Shell
                 $stdout = [];
 
                 if (Shell::isPowershell()) {
-                    $cmd = escapeshellarg($this->command);
-                    exec("powershell -Command $this->command", $stdout, $result);
+                    exec("powershell -Command " . $this->command, $stdout, $result);
                 } else {
                     exec($this->command, $stdout, $result);
                 }
@@ -83,8 +83,7 @@ class Shell
             public function start(): string
             {
                 if (Shell::isPowershell()) {
-                    $cmd = escapeshellarg($this->command);
-                    pclose(popen("start /b powershell -Command $this->command", "r"));
+                    pclose(popen("start /b powershell -Command " . $this->command, "r"));
                 } else {
                     system("nohup " . $this->command . " > /dev/null 2>/dev/null &");
                 }

@@ -130,9 +130,13 @@ class Posts
 
     public function getPostsByHashtag(string $hashtag, int $page = 1, ?int $perPage = null): \Traversable
     {
-        $hashtag = "#$hashtag";
+        $term = $this->hashtagFulltextTerm($hashtag);
+        if ($term === null) {
+            return;
+        }
+
         $sel = $this->posts
-                    ->where("MATCH (content) AGAINST (? IN BOOLEAN MODE)", "+$hashtag")
+                    ->where("MATCH (content) AGAINST (? IN BOOLEAN MODE)", $term)
                     ->where("deleted", 0)
                     ->where("archived", 0)
                     ->order("created DESC")
@@ -146,14 +150,28 @@ class Posts
 
     public function getPostCountByHashtag(string $hashtag): int
     {
-        $hashtag = "#$hashtag";
-        $sel = $this->posts
-                    ->where("content LIKE ?", "%$hashtag%")
+        $term = $this->hashtagFulltextTerm($hashtag);
+        if ($term === null) {
+            return 0;
+        }
+
+        return $this->posts
+                    ->where("MATCH (content) AGAINST (? IN BOOLEAN MODE)", $term)
                     ->where("deleted", 0)
                     ->where("archived", 0)
-                    ->where("suggested", 0);
+                    ->where("suggested", 0)
+                    ->count("*");
+    }
 
-        return sizeof($sel);
+    private function hashtagFulltextTerm(string $hashtag): ?string
+    {
+        $hashtag = preg_replace('/[+\-<>()~*"@]+/', "", $hashtag) ?? "";
+        $hashtag = trim($hashtag);
+        if ($hashtag === "" || mb_strlen($hashtag) > 64) {
+            return null;
+        }
+
+        return "+#" . $hashtag;
     }
 
     public function getPostById(int $wall, int $post, bool $forceSuggestion = false): ?Post

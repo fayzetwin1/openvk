@@ -29,7 +29,7 @@ final class BlobPresenter extends OpenVKPresenter
         $path = realpath(OPENVK_ROOT . "/storage/$dir/$name.$format");
         if (!$path) { # Will also check if file exists since realpath fails on ENOENT
             $this->notFound();
-        } elseif (strpos($path, $path) !== 0) { # Prevent directory traversal and storage container escape
+        } elseif (!$base || (strpos($path, $base . DIRECTORY_SEPARATOR) !== 0 && $path !== $base)) {
             $this->notFound();
         }
 

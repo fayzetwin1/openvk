@@ -470,8 +470,11 @@ final class Messages extends VKAPIRequestHandler
             $url = ovk_scheme(true) . $url;
         }
 
-        $key = openssl_random_pseudo_bytes(8);
-        $key = bin2hex($key) . bin2hex($key ^ (~CHANDLER_ROOT_CONF["security"]["secret"] | ((string) $this->getUser()->getId())));
+        $exp   = time() + 3600;
+        $nonce = bin2hex(random_bytes(8));
+        $uid   = $this->getUser()->getId();
+        $sig   = hash_hmac("sha256", "$uid|$exp|$nonce", CHANDLER_ROOT_CONF["security"]["secret"]);
+        $key   = $uid . "." . $exp . "." . $nonce . "." . $sig;
         $res = [
             "key"    => $key,
             "server" => $url,

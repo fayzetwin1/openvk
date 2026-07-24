@@ -373,7 +373,7 @@
                             <input id="login" type="text" name="login" required />
                             <label for="password"><span>{_password}:</span></label>
                             <input id="password" type="password" name="password" required />
-                            <input type="hidden" name="jReturnTo" value="{$_SERVER['REQUEST_URI']}" />
+                            <input type="hidden" name="jReturnTo" value="{$safeReturnTo}" />
                             <input type="hidden" name="hash" value="{$csrfToken}" />
                             <input type="submit" value="{_log_in}" class="button" style="display: inline-block; font-family: Tahoma" />
                             <a href="/reg"><input type="button" value="{_registration}" class="button" style="font-family: Tahoma" /></a><br><br>
@@ -430,7 +430,7 @@
                 <a href="/privacy" class="link">{_footer_privacy}</a>
             </div>
             <p>
-                {var $currentUrl = $_SERVER["REQUEST_URI"]}
+                {var $currentUrl = $safeReturnTo}
                 {foreach array_slice(getLanguages(), 0, 3) as $language}
                     <a href="/language?lg={$language['code']}&hash={urlencode($csrfToken)}&jReturnTo={php echo rawurlencode($currentUrl)}" rel="nofollow" title="{$language['native_name']}" class="link">
                         <img src="/assets/packages/static/openvk/img/flags/{$language['flag']}.gif" alt="{$language['native_name']}">

@@ -2004,6 +2004,8 @@
 "url_is_banned_default_reason" = "The link you are attempting to open may lead to a site designed to deceive users for profit.";
 "url_is_banned_title" = "Link to a suspicious site";
 "url_is_banned_proceed" = "Proceed to the link";
+"leaving_site_title" = "You are leaving the site";
+"leaving_site_comment" = "You are about to open an external link. <b>$1</b> is not responsible for its contents.";
 
 "recently" = "Recently";
 

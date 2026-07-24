@@ -59,7 +59,6 @@ final class AdminPresenter extends OpenVKPresenter
 
     private function warnIfLongpoolBroken(): void
     {
-        bdump(is_writable(CHANDLER_ROOT . '/tmp/events.bin'));
         if (file_exists(CHANDLER_ROOT . '/tmp/events.bin') == false || is_writable(CHANDLER_ROOT . '/tmp/events.bin') == false) {
             $this->flash("warn", tr("admin_longpool_broken"), tr("admin_longpool_broken_desc", CHANDLER_ROOT . '/tmp/events.bin'));
         }
@@ -195,6 +194,8 @@ final class AdminPresenter extends OpenVKPresenter
             return;
         }
 
+        $this->assertNoCSRF();
+
         switch ($_POST["act"] ?? "info") {
             default:
             case "info":
@@ -212,9 +213,14 @@ final class AdminPresenter extends OpenVKPresenter
                 }
                 $user->setVerified(empty($this->postParam("verify") ? 0 : 1));
                 if ($this->postParam("add-to-group")) {
-                    if (!(new ChandlerGroups())->isUserAMember($this->postParam("add-to-group"), $user->getChandlerGUID())) {
-                        $query = "INSERT INTO `ChandlerACLRelations` (`user`, `group`) VALUES ('" . $user->getChandlerGUID() . "', '" . $this->postParam("add-to-group") . "')";
-                        DatabaseConnection::i()->getConnection()->query($query);
+                    $groupId = $this->postParam("add-to-group");
+                    if (!preg_match('/^[0-9a-fA-F-]{36}$/', $groupId)) {
+                        $this->flash("err", tr("error"), tr("c_group_not_found"));
+                    } elseif (!(new ChandlerGroups())->isUserAMember($groupId, $user->getChandlerGUID())) {
+                        DatabaseConnection::i()->getContext()->table("ChandlerACLRelations")->insert([
+                            "user"  => $user->getChandlerGUID(),
+                            "group" => $groupId,
+                        ]);
                     } else {
                         $this->flash("err", tr("error"), tr("c_user_is_already_in_group"));
                     }
@@ -666,52 +672,81 @@ final class AdminPresenter extends OpenVKPresenter
             return;
         }
 
+        $this->assertNoCSRF();
+        $ctx = DatabaseConnection::i()->getContext();
+
         if ($this->postParam("fixChandlerGroups")) {
             $guid = $this->user->identity->getChandlerGUID();
+            $created = false;
 
-            $req = "";
-            if ($this->postParam("agent")) {
-                $req = $req . <<<'SQL'
-                        INSERT INTO `ChandlerGroups` VALUES (NULL, "OVK\\SupportAgents", NULL);
-                        INSERT INTO `ChandlerACLGroupsPermissions` VALUES ((SELECT id FROM ChandlerGroups WHERE name = "OVK\\SupportAgents"), "openvk\\Web\\Models\\Entities\\TicketReply", 0, "write", 1);
-                        INSERT INTO `ChandlerACLRelations` VALUES ("{GUID}", (SELECT id FROM ChandlerGroups WHERE name = "OVK\\SupportAgents"), 64);
-                    SQL;
+            $bootstrap = [
+                "agent" => [
+                    "name"       => "OVK\\SupportAgents",
+                    "model"      => "openvk\\Web\\Models\\Entities\\TicketReply",
+                    "permission" => "write",
+                ],
+                "moder" => [
+                    "name"       => "OVK\\Moderators",
+                    "model"      => "openvk\\Web\\Models\\Entities\\Report",
+                    "permission" => "admin",
+                ],
+                "nsp" => [
+                    "name"       => "OVK\\SpamAnalysts",
+                    "model"      => "openvk\\Web\\Models\\Entities\\Ban",
+                    "permission" => "write",
+                ],
+            ];
+
+            foreach ($bootstrap as $flag => $spec) {
+                if (!$this->postParam($flag)) {
+                    continue;
+                }
+
+                $ctx->table("ChandlerGroups")->insert([
+                    "name"  => $spec["name"],
+                    "color" => null,
+                ]);
+                $group = $ctx->table("ChandlerGroups")->where("name", $spec["name"])->fetch();
+                if (!$group) {
+                    continue;
+                }
+
+                $ctx->table("ChandlerACLGroupsPermissions")->insert([
+                    "group"      => $group->id,
+                    "model"      => $spec["model"],
+                    "context"    => 0,
+                    "permission" => $spec["permission"],
+                    "status"     => 1,
+                ]);
+                $ctx->table("ChandlerACLRelations")->insert([
+                    "user"     => $guid,
+                    "group"    => $group->id,
+                    "priority" => 64,
+                ]);
+                $created = true;
             }
 
-            if ($this->postParam("moder")) {
-                $req = $req . <<<'SQL'
-                        INSERT INTO `ChandlerGroups` VALUES (NULL, "OVK\\Moderators", NULL);
-                        INSERT INTO `ChandlerACLGroupsPermissions` VALUES ((SELECT id FROM ChandlerGroups WHERE name = "OVK\\Moderators"), "openvk\\Web\\Models\\Entities\\Report", 0, "admin", 1);
-                        INSERT INTO `ChandlerACLRelations` VALUES ("{GUID}", (SELECT id FROM ChandlerGroups WHERE name = "OVK\\Moderators"), 64);
-                    SQL;
-            }
-
-            if ($this->postParam("nsp")) {
-                $req = $req . <<<'SQL'
-                        INSERT INTO `ChandlerGroups` VALUES (NULL, "OVK\\SpamAnalysts", NULL);
-                        INSERT INTO `ChandlerACLGroupsPermissions` VALUES ((SELECT id FROM ChandlerGroups WHERE name = "OVK\\SpamAnalysts"), "openvk\\Web\\Models\\Entities\\Ban", 0, "write", 1);
-                        INSERT INTO `ChandlerACLRelations` VALUES ("{GUID}", (SELECT id FROM ChandlerGroups WHERE name = "OVK\\SpamAnalysts"), 64);
-                    SQL;
-            }
-
-            if (mb_strlen($req) > 0) {
-                $req = str_replace('{GUID}', $guid, $req);
-                DatabaseConnection::i()->getConnection()->query($req);
+            if ($created) {
                 $this->flashFail("succ", tr("changes_saved"));
             }
 
             return;
         }
 
-        $req = "INSERT INTO `ChandlerGroups` (`name`) VALUES ('" . $this->postParam("name") . "')";
-        DatabaseConnection::i()->getConnection()->query($req);
+        $ctx->table("ChandlerGroups")->insert([
+            "name" => $this->postParam("name"),
+        ]);
     }
 
     public function renderChandlerGroup(string $UUID): void
     {
-        $DB = DatabaseConnection::i()->getConnection();
+        if (!preg_match('/^[0-9a-fA-F-]{36}$/', $UUID)) {
+            $this->flashFail("err", tr("error"), tr("c_group_not_found"));
+        }
 
-        if (is_null($DB->query("SELECT * FROM `ChandlerGroups` WHERE `id` = '$UUID'")->fetch())) {
+        $ctx = DatabaseConnection::i()->getContext();
+
+        if (is_null($ctx->table("ChandlerGroups")->where("id", $UUID)->fetch())) {
             $this->flashFail("err", tr("error"), tr("c_group_not_found"));
         }
 
@@ -730,65 +765,110 @@ final class AdminPresenter extends OpenVKPresenter
         $this->template->members = (new ChandlerGroups())->getMembersById($UUID);
         $this->template->perms = (new ChandlerGroups())->getPermissionsById($UUID);
 
-        if ($this->template->mode == "removeMember") {
-            $where = "`user` = '" . $this->queryParam("uid") . "' AND `group` = '$UUID'";
-
-            if (is_null($DB->query("SELECT * FROM `ChandlerACLRelations` WHERE " . $where)->fetch())) {
-                $this->flashFail("err", tr("error"), tr("c_user_is_not_in_group"));
+        if (in_array($this->template->mode, ["removeMember", "removePermission", "delete"], true)) {
+            if ($_SERVER["REQUEST_METHOD"] !== "POST") {
+                $this->flashFail("err", tr("error"), "Method Not Allowed");
             }
+            $this->assertNoCSRF();
 
-            $DB->query("DELETE FROM `ChandlerACLRelations` WHERE " . $where);
-            $this->flashFail("succ", tr("changes_saved"), tr("c_user_removed_from_group"));
-        } elseif ($this->template->mode == "removePermission") {
-            $where = "`model` = '" . trim(addslashes($this->queryParam("model"))) . "' AND `permission` = '" . $this->queryParam("perm") . "' AND `group` = '$UUID'";
+            if ($this->template->mode == "removeMember") {
+                $uid = $this->postParam("uid") ?? $this->queryParam("uid");
+                if (!is_string($uid) || !preg_match('/^[0-9a-fA-F-]{36}$/', $uid)) {
+                    $this->flashFail("err", tr("error"), tr("c_user_is_not_in_group"));
+                }
 
-            if (is_null($DB->query("SELECT * FROM `ChandlerACLGroupsPermissions` WHERE $where"))) {
-                $this->flashFail("err", tr("error"), tr("c_permission_not_found"));
+                $relation = $ctx->table("ChandlerACLRelations")->where([
+                    "user"  => $uid,
+                    "group" => $UUID,
+                ]);
+                if (is_null($relation->fetch())) {
+                    $this->flashFail("err", tr("error"), tr("c_user_is_not_in_group"));
+                }
+
+                $ctx->table("ChandlerACLRelations")->where([
+                    "user"  => $uid,
+                    "group" => $UUID,
+                ])->delete();
+                $this->flashFail("succ", tr("changes_saved"), tr("c_user_removed_from_group"));
+            } elseif ($this->template->mode == "removePermission") {
+                $model = trim((string) ($this->postParam("model") ?? $this->queryParam("model")));
+                $perm  = (string) ($this->postParam("perm") ?? $this->queryParam("perm"));
+
+                $permission = $ctx->table("ChandlerACLGroupsPermissions")->where([
+                    "model"      => $model,
+                    "permission" => $perm,
+                    "group"      => $UUID,
+                ]);
+                if (is_null($permission->fetch())) {
+                    $this->flashFail("err", tr("error"), tr("c_permission_not_found"));
+                }
+
+                $ctx->table("ChandlerACLGroupsPermissions")->where([
+                    "model"      => $model,
+                    "permission" => $perm,
+                    "group"      => $UUID,
+                ])->delete();
+                $this->flashFail("succ", tr("changes_saved"), tr("c_permission_removed_from_group"));
+            } else {
+                $ctx->table("ChandlerGroups")->where("id", $UUID)->delete();
+                $ctx->table("ChandlerACLGroupsPermissions")->where("group", $UUID)->delete();
+                $ctx->table("ChandlerACLRelations")->where("group", $UUID)->delete();
+
+                $this->flashFail("succ", tr("changes_saved"), tr("c_group_removed"));
             }
-
-            $DB->query("DELETE FROM `ChandlerACLGroupsPermissions` WHERE $where");
-            $this->flashFail("succ", tr("changes_saved"), tr("c_permission_removed_from_group"));
-        } elseif ($this->template->mode == "delete") {
-            $DB->query("DELETE FROM `ChandlerGroups` WHERE `id` = '$UUID'");
-            $DB->query("DELETE FROM `ChandlerACLGroupsPermissions` WHERE `group` = '$UUID'");
-            $DB->query("DELETE FROM `ChandlerACLRelations` WHERE `group` = '$UUID'");
-
-            $this->flashFail("succ", tr("changes_saved"), tr("c_group_removed"));
         }
 
         if ($_SERVER["REQUEST_METHOD"] !== "POST") {
             return;
         }
 
-        $req = "";
+        $this->assertNoCSRF();
 
         if ($this->template->mode == "main") {
             if ($this->postParam("delete")) {
-                $req = "DELETE FROM `ChandlerGroups` WHERE `id`='$UUID'";
+                $ctx->table("ChandlerGroups")->where("id", $UUID)->delete();
+                $ctx->table("ChandlerACLGroupsPermissions")->where("group", $UUID)->delete();
+                $ctx->table("ChandlerACLRelations")->where("group", $UUID)->delete();
             } else {
-                $req = "UPDATE `ChandlerGroups` SET `name`='" . $this->postParam('name') . "' , `color`='" . $this->postParam("color") . "' WHERE `id`='$UUID'";
+                $ctx->table("ChandlerGroups")->where("id", $UUID)->update([
+                    "name"  => $this->postParam("name"),
+                    "color" => $this->postParam("color"),
+                ]);
             }
+            $this->flashFail("succ", tr("changes_saved"));
         }
 
         if ($this->template->mode == "members") {
-            if ($this->postParam("uid")) {
-                if (is_null((new ChandlerUsers())->getById($this->postParam("uid")))) {
+            $uid = $this->postParam("uid");
+            if ($uid) {
+                if (!preg_match('/^[0-9a-fA-F-]{36}$/', $uid)) {
                     $this->flashFail("err", tr("error"), tr("profile_not_found"));
                 }
-                if ((new ChandlerGroups())->isUserAMember($UUID, $this->postParam("uid"))) {
+                if (is_null((new ChandlerUsers())->getById($uid))) {
+                    $this->flashFail("err", tr("error"), tr("profile_not_found"));
+                }
+                if ((new ChandlerGroups())->isUserAMember($UUID, $uid)) {
                     $this->flashFail("err", tr("error"), tr("c_user_is_already_in_group"));
                 }
-            }
-        }
 
-        $req = "INSERT INTO `ChandlerACLRelations` (`user`, `group`, `priority`) VALUES ('" . $this->postParam("uid") . "', '$UUID', 32)";
+                $ctx->table("ChandlerACLRelations")->insert([
+                    "user"     => $uid,
+                    "group"    => $UUID,
+                    "priority" => 32,
+                ]);
+            }
+            $this->flashFail("succ", tr("changes_saved"));
+        }
 
         if ($this->template->mode == "permissions") {
-            $req = "INSERT INTO `ChandlerACLGroupsPermissions` (`group`, `model`, `permission`, `context`) VALUES ('$UUID', '" . trim(addslashes($this->postParam("model"))) . "', '" . $this->postParam("permission") . "', 0)";
+            $ctx->table("ChandlerACLGroupsPermissions")->insert([
+                "group"      => $UUID,
+                "model"      => trim((string) $this->postParam("model")),
+                "permission" => $this->postParam("permission"),
+                "context"    => 0,
+            ]);
+            $this->flashFail("succ", tr("changes_saved"));
         }
-
-        $DB->query($req);
-        $this->flashFail("succ", tr("changes_saved"));
     }
 
     public function renderChandlerUser(string $UUID): void

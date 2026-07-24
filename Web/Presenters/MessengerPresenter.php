@@ -8,6 +8,7 @@ use Chandler\Signaling\SignalManager;
 use openvk\Web\Events\NewMessageEvent;
 use openvk\Web\Models\Repositories\{Users, Clubs, Messages};
 use openvk\Web\Models\Entities\{Message, Correspondence};
+use openvk\Web\Util\LongpollGuard;
 
 final class MessengerPresenter extends OpenVKPresenter
 {
@@ -81,17 +82,24 @@ final class MessengerPresenter extends OpenVKPresenter
         $this->assertUserLoggedIn();
 
         header("Content-Type: application/json");
+        $this->assertLongpollBudget();
+
+        if (!LongpollGuard::acquire($this->user->id)) {
+            header("HTTP/1.1 429 Too Many Requests");
+            header("Retry-After: 5");
+            exit(json_encode(["error" => "longpoll_busy"]));
+        }
+
         $this->signaler->listen(function ($event, $id) {
             exit(json_encode([[
                 "UUID"  => $id,
                 "event" => $event->getLongPoolSummary(),
             ]]));
-        }, $this->user->id);
+        }, $this->user->id, 15);
     }
 
     public function renderVKEvents(int $id): void
     {
-        header("Access-Control-Allow-Origin: *");
         header("Content-Type: application/json");
 
         if ($this->queryParam("act") !== "a_check") {
@@ -102,12 +110,31 @@ final class MessengerPresenter extends OpenVKPresenter
             exit();
         }
 
-        $key       = $this->queryParam("key");
-        $payload   = hex2bin(substr($key, 0, 16));
-        $signature = hex2bin(substr($key, 16));
-        if (($signature ^ (~CHANDLER_ROOT_CONF["security"]["secret"] | ((string) $id))) !== $payload) {
+        $key   = $this->queryParam("key");
+        $parts = explode(".", $key, 4);
+        if (sizeof($parts) !== 4) {
             exit(json_encode([
                 "failed" => 3,
+            ]));
+        }
+
+        [$uid, $exp, $nonce, $sig] = $parts;
+        $hmac = hash_hmac("sha256", "$uid|$exp|$nonce", CHANDLER_ROOT_CONF["security"]["secret"]);
+        if ((int) $uid !== $id || (int) $exp < time() || !hash_equals($hmac, $sig)) {
+            exit(json_encode([
+                "failed" => 3,
+            ]));
+        }
+
+        $this->assertLongpollBudget(json: true);
+
+        if (!LongpollGuard::acquire($id)) {
+            header("HTTP/1.1 429 Too Many Requests");
+            header("Retry-After: 5");
+            exit(json_encode([
+                "failed"  => 2,
+                "ts"      => time(),
+                "updates" => [],
             ]));
         }
 
@@ -115,10 +142,10 @@ final class MessengerPresenter extends OpenVKPresenter
 
         $time = intval($this->queryParam("wait"));
 
-        if ($time > 60) {
-            $time = 60;
+        if ($time > 15) {
+            $time = 15;
         } elseif ($time == 0) {
-            $time = 25;
+            $time = 15;
         } // default
 
         $this->signaler->listen(function ($event, $eId) use ($id) {
@@ -129,6 +156,27 @@ final class MessengerPresenter extends OpenVKPresenter
                 ],
             ]));
         }, $id, $time);
+    }
+
+    private function assertLongpollBudget(bool $json = false): void
+    {
+        $ip  = (new \openvk\Web\Models\Repositories\IPs())->get(CONNECTING_IP);
+        $res = $ip->rateLimit(2);
+        if ($res === \openvk\Web\Models\Entities\IP::RL_RESET || $res === \openvk\Web\Models\Entities\IP::RL_CANEXEC) {
+            return;
+        }
+
+        header("HTTP/1.1 429 Too Many Requests");
+        header("Retry-After: 20");
+        if ($json) {
+            exit(json_encode([
+                "failed"  => 2,
+                "ts"      => time(),
+                "updates" => [],
+            ]));
+        }
+
+        exit(json_encode(["error" => "rate_limited"]));
     }
 
     public function renderApiGetMessages(int $sel, int $lastMsg): void

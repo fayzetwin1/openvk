@@ -59,6 +59,25 @@ final class InternalAPIPresenter extends OpenVKPresenter
         }
 
         [$class, $method] = $method;
+
+        // State-changing ServiceAPI methods require CSRF (hash header or envelope field)
+        $csrfRequired = [
+            "Apps.getRegularToken",
+            "Apps.pay",
+            "Apps.withdrawFunds",
+            "Apps.updatePermission",
+            "Polls.vote",
+            "Polls.unvote",
+            "Wall.newStatus",
+        ];
+        $fqn = $class . "." . $method;
+        if (in_array($fqn, $csrfRequired, true)) {
+            $hash = $_SERVER["HTTP_X_CSRF_TOKEN"] ?? ($input->hash ?? null);
+            if (!is_string($hash) || !hash_equals((string) ($GLOBALS["csrfToken"] ?? ""), $hash)) {
+                $this->fail(-32600, "Invalid CSRF token");
+            }
+        }
+
         $class = '\openvk\ServiceAPI\\' . $class;
         if (!class_exists($class)) {
             $this->fail(-32601, "Procedure not found");
@@ -123,7 +142,7 @@ final class InternalAPIPresenter extends OpenVKPresenter
         }
 
 
-        if (is_null($post)) {
+        if (is_null($post) || !$post->canBeViewedBy($this->user->identity)) {
             $this->returnJson([
                 "success" => 0,
             ]);
@@ -183,17 +202,21 @@ final class InternalAPIPresenter extends OpenVKPresenter
         $allowed_hosts = OPENVK_ROOT_CONF["openvk"]["preferences"]["notes"]["allowedHosts"] ?? [];
 
         $url = $this->requestParam("url");
-        $url = base64_decode($url);
-
-        if (!$is_enabled) {
-            $this->redirect($url);
+        $url = base64_decode((string) $url);
+        $safe = ovk_safe_external_url($url);
+        if ($safe === null) {
+            $this->redirect('/assets/packages/static/openvk/img/fn_placeholder.jpg');
         }
 
-        $url_parsed = parse_url($url);
-        $host = $url_parsed['host'];
+        if (!$is_enabled) {
+            $this->redirect($safe);
+        }
 
-        if (in_array($host, $allowed_hosts)) {
-            $this->redirect($url);
+        $url_parsed = parse_url($safe);
+        $host = $url_parsed['host'] ?? '';
+
+        if (in_array($host, $allowed_hosts, true)) {
+            $this->redirect($safe);
         } else {
             $this->redirect('/assets/packages/static/openvk/img/fn_placeholder.jpg');
         }

@@ -99,7 +99,13 @@ class Correspondence
         $params = array_merge($params[0], $params[1], array_reverse($params[0]), array_reverse($params[1]), $params[2]);
 
         if ($limit === null) {
-            DatabaseConnection::i()->getConnection()->query("UPDATE messages SET unread = 0 WHERE sender_id = " . $this->correspondents[1]->getId());
+            $recipientId = $this->correspondents[0]->getId();
+            $senderId    = $this->correspondents[1]->getId();
+            DatabaseConnection::i()->getConnection()->query(
+                "UPDATE messages SET unread = 0 WHERE sender_id = ? AND recipient_id = ?",
+                $senderId,
+                $recipientId
+            );
         }
 
         if (is_null($cap)) {
@@ -206,7 +212,11 @@ class Correspondence
         $message->setUnread(1);
         $message->save();
 
-        DatabaseConnection::i()->getConnection()->query("UPDATE messages SET unread = 0 WHERE sender_id = " . $this->correspondents[1]->getId());
+        DatabaseConnection::i()->getConnection()->query(
+            "UPDATE messages SET unread = 0 WHERE sender_id = ? AND recipient_id = ?",
+            $this->correspondents[1]->getId(),
+            $this->correspondents[0]->getId()
+        );
 
         # да
         if ($ids[0] !== $ids[1]) {

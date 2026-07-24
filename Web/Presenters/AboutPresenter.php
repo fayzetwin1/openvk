@@ -83,7 +83,7 @@ final class AboutPresenter extends OpenVKPresenter
         }
 
         if (!is_null($_GET['jReturnTo'])) {
-            $this->redirect(rawurldecode($_GET['jReturnTo']));
+            $this->redirect(ovk_safe_internal_redirect($_GET['jReturnTo']));
         }
     }
 
@@ -101,6 +101,7 @@ final class AboutPresenter extends OpenVKPresenter
 
     public function renderSandbox(): void
     {
+        $this->assertPermission("admin", "access", -1);
         $this->template->languages = getLanguages();
     }
 
