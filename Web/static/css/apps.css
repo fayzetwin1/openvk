@@ -1,0 +1,434 @@
+/* APPS CATALOG */
+
+.apps_ml img { margin-left: 10px; }
+.apps_mr img { margin-right: 10px; }
+
+#apps_page {
+    clear: both;
+    margin: -10px;
+    width: auto;
+}
+
+#apps_page .apps_side {
+    padding: 10px 12px;
+    background: #f7f7f7;
+    border-bottom: 1px solid #DDE9F0;
+}
+
+#apps_page .apps_side_search {
+    position: relative;
+}
+
+#apps_page .apps_side_search input {
+    border: 1px solid #B5C6D1;
+    height: 20px;
+    padding: 4px 8px 4px 28px;
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 2px;
+}
+
+#apps_page .apps_side_search .apps_search_icon {
+    position: absolute;
+    left: 8px;
+    top: 6px;
+    width: 14px;
+    height: 14px;
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+#apps_page .tabs {
+    margin-left: 0;
+    width: auto;
+    box-sizing: border-box;
+    padding: 10px 12px 0;
+}
+
+#apps_rows {
+    position: relative;
+    padding: 10px 12px;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+#apps_rows .apps_title {
+    font-size: 13px;
+    font-weight: bold;
+    color: #45688E;
+    border-bottom: 1px solid #DAE1E8;
+    padding-bottom: 4px;
+    margin-bottom: 8px;
+}
+
+#apps_rows .apps_title .apps_title_toggles {
+    float: right;
+    font-weight: normal;
+    font-size: 11px;
+}
+
+#apps_rows .apps_title .apps_title_toggles a {
+    color: #2B587A;
+    margin-left: 4px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    text-decoration: none;
+}
+
+#apps_rows .apps_title .apps_title_toggles a.apps_toggle_active {
+    background: #5B7FA6;
+    color: #fff;
+}
+
+#apps_rows .apps_block {
+    float: left;
+    width: 50%;
+    box-sizing: border-box;
+    padding-right: 8px;
+}
+
+#apps_rows .apps_block + .apps_block {
+    margin-left: 0;
+    padding-right: 0;
+    padding-left: 8px;
+}
+
+#apps_rows .apps_block_wide {
+    float: none;
+    width: 100%;
+    clear: both;
+    padding: 0;
+}
+
+.apps_clear {
+    clear: both;
+    height: 0;
+    overflow: hidden;
+}
+
+/* Installed apps grid */
+.apps_my_grid {
+    overflow: hidden;
+    min-height: 80px;
+}
+
+.apps_my_grid_item {
+    float: left;
+    width: 90px;
+    margin: 0 6px 12px 0;
+    text-align: center;
+}
+
+.apps_my_grid_item a {
+    text-decoration: none;
+    color: #2B587A;
+    font-size: 11px;
+    font-weight: bold;
+    line-height: 14px;
+}
+
+.apps_my_grid_item img {
+    display: block;
+    width: 75px;
+    height: 75px;
+    margin: 0 auto 4px;
+    border-radius: 3px;
+    object-fit: cover;
+}
+
+.apps_my_grid_item .apps_my_name {
+    display: block;
+    max-height: 28px;
+    overflow: hidden;
+    word-wrap: break-word;
+}
+
+/* List rows (popular / new / activity / soft clients) */
+#apps_rows .apps_application,
+.apps_soft_list .apps_application {
+    margin-top: 6px;
+    color: #777;
+    line-height: 17px;
+    padding: 8px 4px;
+    overflow: hidden;
+    border-bottom: 1px solid #F0F3F5;
+}
+
+#apps_rows .apps_application:last-child,
+.apps_soft_list .apps_application:last-child {
+    border-bottom: none;
+}
+
+#apps_rows .apps_application:hover,
+.apps_soft_list .apps_application:hover {
+    background: #EAEDF3;
+}
+
+#apps_rows .apps_application a,
+.apps_soft_list .apps_application a {
+    font-weight: bold;
+    color: #2B587A;
+}
+
+.apps_application .apps_app_icon {
+    float: left;
+    width: 50px;
+    height: 50px;
+    margin-right: 10px;
+    border-radius: 3px;
+    object-fit: cover;
+}
+
+.apps_application .apps_app_meta {
+    overflow: hidden;
+}
+
+.apps_application .apps_app_users,
+.apps_application .apps_app_desc {
+    color: #777;
+    font-size: 11px;
+    font-weight: normal;
+}
+
+.apps_application .apps_type_badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: normal;
+    color: #fff;
+    background: #8B9BB4;
+    border-radius: 2px;
+    padding: 0 4px;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+
+.apps_application .apps_type_badge.game {
+    background: #5B7FA6;
+}
+
+.apps_application .apps_type_badge.app {
+    background: #7B8FA6;
+}
+
+/* Friends activity */
+.apps_activity_item {
+    overflow: hidden;
+    padding: 8px 4px;
+    border-bottom: 1px solid #F0F3F5;
+    color: #777;
+    font-size: 11px;
+    line-height: 15px;
+}
+
+.apps_activity_item:last-child {
+    border-bottom: none;
+}
+
+.apps_activity_item .apps_act_ava {
+    float: left;
+    width: 32px;
+    height: 32px;
+    margin-right: 8px;
+    border-radius: 2px;
+    object-fit: cover;
+}
+
+.apps_activity_item .apps_act_app_icon {
+    float: right;
+    width: 32px;
+    height: 32px;
+    margin-left: 8px;
+    border-radius: 2px;
+    object-fit: cover;
+}
+
+.apps_activity_item .apps_act_body {
+    overflow: hidden;
+}
+
+.apps_activity_item a {
+    font-weight: bold;
+    color: #2B587A;
+}
+
+.apps_activity_item .apps_act_time {
+    color: #999;
+    display: block;
+    margin-top: 2px;
+}
+
+.apps_empty {
+    color: #777;
+    font-size: 12px;
+    padding: 16px 8px;
+    text-align: center;
+}
+
+.apps_add_more {
+    display: block;
+    padding: 8px;
+    background: #EDEFF3;
+    text-align: center;
+    color: #4C7097;
+    margin: 10px 12px;
+    border-radius: 2px;
+    text-decoration: none;
+    clear: both;
+}
+
+.apps_add_more:hover {
+    background: #E1E5ED;
+    color: #4C7097;
+    text-decoration: none;
+}
+
+.apps_section_divider {
+    border-top: 1px solid #DAE1E8;
+    margin: 0;
+}
+
+/* Soft clients */
+.apps_soft_intro {
+    padding: 12px 14px 4px;
+    color: #777;
+    font-size: 12px;
+    line-height: 16px;
+}
+
+.apps_soft_list {
+    padding: 4px 12px 12px;
+}
+
+.apps_soft_list .apps_application .apps_app_icon {
+    width: 64px;
+    height: 64px;
+}
+
+/* Promo banner — full width, 150px */
+.apps_promo,
+#slideshow {
+    position: relative;
+    width: 100%;
+    height: 150px;
+    margin: 0;
+    overflow: hidden;
+    background: #E1E7ED;
+    box-sizing: border-box;
+}
+
+.apps_promo_slides {
+    position: relative;
+    width: 100%;
+    height: 150px;
+}
+
+.apps_promo_slide {
+    display: none;
+    width: 100%;
+    height: 150px;
+}
+
+.apps_promo_slide.apps_promo_active {
+    display: block;
+}
+
+.apps_promo_slide a {
+    display: block;
+    width: 100%;
+    height: 150px;
+}
+
+.apps_promo_slide img {
+    display: block;
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+    border: 0;
+}
+
+.apps_promo .control,
+#slideshow .control {
+    cursor: pointer;
+    display: block;
+    height: 150px;
+    position: absolute;
+    top: 0;
+    text-indent: -10000px;
+    width: 30px;
+    z-index: 5;
+    background-color: rgba(225, 231, 237, 0.55);
+    background-repeat: no-repeat;
+    background-position: center center;
+}
+
+.apps_promo #leftControl,
+#slideshow #leftControl {
+    left: 0;
+}
+
+.apps_promo #rightControl,
+#slideshow #rightControl {
+    right: 0;
+}
+
+.apps_promo_arrow_l::before,
+.apps_promo_arrow_r::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    margin-top: -6px;
+    border-style: solid;
+}
+
+.apps_promo_arrow_l::before {
+    margin-left: -4px;
+    border-width: 6px 8px 6px 0;
+    border-color: transparent #507299 transparent transparent;
+}
+
+.apps_promo_arrow_r::before {
+    margin-left: -2px;
+    border-width: 6px 0 6px 8px;
+    border-color: transparent transparent transparent #507299;
+}
+
+#apps_view_wrape {
+    background: #E8EFF7;
+    padding: 8px;
+    padding-left: 10px;
+    color: #069;
+    font-weight: bold;
+    border-bottom: 1px solid #E7EDF4;
+}
+
+.apps_tabs_settings {
+    float: right;
+    padding: 6px 10px 0 0;
+    font-size: 11px;
+}
+
+.apps_tabs_settings a {
+    color: #2B587A;
+}
+
+/* Flash app stage (Ruffle) */
+.apps_flash_stage {
+    width: 607px;
+    height: 600px;
+    margin: 0 auto;
+    background: #000;
+    overflow: hidden;
+    position: relative;
+}
+
+.apps_flash_stage ruffle-player,
+.apps_flash_stage embed,
+.apps_flash_stage object,
+.apps_flash_stage canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+}

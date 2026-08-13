@@ -25,5 +25,19 @@ services:
       - ../Web/Presenters/templates/_includeCSS.latte:/opt/chandler/extensions/available/openvk/Web/Presenters/templates/_includeCSS.latte:ro
       - ../Web/routes.yml:/opt/chandler/extensions/available/openvk/Web/routes.yml:ro
       - ../install/sqls/00065-notes-as-wiki.sql:/opt/chandler/extensions/available/openvk/install/sqls/00065-notes-as-wiki.sql:ro
+      - ../install/sqls/00066-apps-catalog.sql:/opt/chandler/extensions/available/openvk/install/sqls/00066-apps-catalog.sql:ro
+      - ../install/sqls/00067-apps-flash.sql:/opt/chandler/extensions/available/openvk/install/sqls/00067-apps-flash.sql:ro
+      - ../Web/Presenters/BlobPresenter.php:/opt/chandler/extensions/available/openvk/Web/Presenters/BlobPresenter.php:ro
+      - ../Web/Presenters/AppsPresenter.php:/opt/chandler/extensions/available/openvk/Web/Presenters/AppsPresenter.php:ro
+      - ../Web/Presenters/templates/Apps:/opt/chandler/extensions/available/openvk/Web/Presenters/templates/Apps:ro
+      - ../Web/Models/Entities/Application.php:/opt/chandler/extensions/available/openvk/Web/Models/Entities/Application.php:ro
+      - ../Web/Models/Entities/AppActivity.php:/opt/chandler/extensions/available/openvk/Web/Models/Entities/AppActivity.php:ro
+      - ../Web/Models/Repositories/Applications.php:/opt/chandler/extensions/available/openvk/Web/Models/Repositories/Applications.php:ro
+      - ../Web/static/css/apps.css:/opt/chandler/extensions/available/openvk/Web/static/css/apps.css:ro
+      - ../Web/static/css/apps_edit.css:/opt/chandler/extensions/available/openvk/Web/static/css/apps_edit.css:ro
+      - ../Web/static/js/al_flash.js:/opt/chandler/extensions/available/openvk/Web/static/js/al_flash.js:ro
+      - ../Web/static/js/ruffle:/opt/chandler/extensions/available/openvk/Web/static/js/ruffle:ro
+      - ../Web/Presenters/templates/@layout.latte:/opt/chandler/extensions/available/openvk/Web/Presenters/templates/@layout.latte:ro
       - ../locales/ru.strings:/opt/chandler/extensions/available/openvk/locales/ru.strings:ro
       - ../locales/en.strings:/opt/chandler/extensions/available/openvk/locales/en.strings:ro
+      - ../.cursor:/opt/chandler/extensions/available/openvk/.cursor

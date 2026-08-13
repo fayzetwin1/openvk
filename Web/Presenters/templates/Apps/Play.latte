@@ -12,6 +12,9 @@
     <meta n:if="!is_null($description)" property="og:description" content="{mb_strlen($description) > 300 ? mb_substr($description, 0, 297) . '...' : $description}" />
     <meta name="twitter:title" content="{$name} — {$instance_name}" />
     <meta n:if="!is_null($description)" name="twitter:description" content="{mb_strlen($description) > 200 ? mb_substr($description, 0, 197) . '...' : $description}" />
+    {if $flash}
+        {css "css/apps.css"}
+    {/if}
 {/block}
 
 {block header}
@@ -21,8 +24,12 @@
 
 {block content}
     <center>
-        <iframe id="appFrame" referrerpolicy="unsafe-url" frameBorder="0" src="{$url}" height="600" width="600"
-            sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-forms allow-downloads-without-user-activation"></iframe>
+        {if $flash}
+            <div id="appFlash" class="apps_flash_stage"></div>
+        {else}
+            <iframe id="appFrame" referrerpolicy="unsafe-url" frameBorder="0" src="{$url}" height="600" width="600"
+                sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-forms allow-downloads-without-user-activation"></iframe>
+        {/if}
     </center>
 
     <div n:if="!is_null($news)" id="news">
@@ -43,7 +50,15 @@
         window.appTitle  = {$name};
         window.appPerms  = {$perms};
         window.appOrigin = {$origin};
+        window.appFlash  = {if $flash}true{else}false{/if};
+        window.appSwfUrl = {$swfUrl ?? ''};
+        window.appFlashVars = {$flashVars};
     </script>
 
-    {script "js/al_games.js"}
+    {if $flash}
+        {script "js/ruffle/ruffle.js"}
+        {script "js/al_flash.js"}
+    {else}
+        {script "js/al_games.js"}
+    {/if}
 {/block}

@@ -11,7 +11,7 @@ test.describe('Admin panel', () => {
     await page.goto('/admin');
     await expect(page).toHaveScreenshot('admin-dashboard.png', {
       maxDiffPixels: 200,
-      mask: [page.locator('section.footer-body').filter({ hasText: /Altair/ })],
+      mask: [page.locator('#footer')],
     });
   });
 
@@ -19,7 +19,7 @@ test.describe('Admin panel', () => {
     await page.goto('/admin/users');
     await expect(page).toHaveScreenshot('admin-users.png', {
       maxDiffPixels: 200,
-      mask: [page.locator('section.footer-body').filter({ hasText: /Altair/ })],
+      mask: [page.locator('#footer')],
     });
   });
 
@@ -27,7 +27,7 @@ test.describe('Admin panel', () => {
     await page.goto('/admin/clubs');
     await expect(page).toHaveScreenshot('admin-clubs.png', {
       maxDiffPixels: 200,
-      mask: [page.locator('section.footer-body').filter({ hasText: /Altair/ })],
+      mask: [page.locator('#footer')],
     });
   });
 
@@ -35,7 +35,7 @@ test.describe('Admin panel', () => {
     await page.goto('/admin/bannedLinks');
     await expect(page).toHaveScreenshot('admin-banned-links.png', {
       maxDiffPixels: 200,
-      mask: [page.locator('section.footer-body').filter({ hasText: /Altair/ })],
+      mask: [page.locator('#footer')],
     });
   });
 
@@ -43,7 +43,7 @@ test.describe('Admin panel', () => {
     await page.goto('/admin/bannedLink/id1');
     await expect(page).toHaveScreenshot('admin-banned-link-detail.png', {
       maxDiffPixels: 200,
-      mask: [page.locator('section.footer-body').filter({ hasText: /Altair/ })],
+      mask: [page.locator('#footer')],
     });
   });
 });

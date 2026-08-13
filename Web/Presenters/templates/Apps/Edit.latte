@@ -8,6 +8,10 @@
     {/if}
 {/block}
 
+{block headIncludes}
+    {css "css/apps_edit.css"}
+{/block}
+
 {block header}
     {if $create}
         {_new_app}
@@ -20,10 +24,10 @@
 
 {block content}
     {var $canDelete = !$create && $owner->getId() === $thisUser->getId()}
-    <div class="container_gray">
+    <div class="container_gray" id="app_edit_cont">
         <h4>{_main_information}</h4>
         <form method="POST" enctype="multipart/form-data">
-            <table class="flexible_table" cellspacing="7" cellpadding="0" width="60%" border="0" align="center">
+            <table class="flexible_table apps_edit_table" cellspacing="7" cellpadding="0" width="60%" border="0" align="center">
                 <tbody>
                     <tr>
                         <td width="120" valign="top">
@@ -43,10 +47,53 @@
                     </tr>
                     <tr>
                         <td width="120" valign="top">
+                            <span class="nobold">{_app_type}: </span>
+                        </td>
+                        <td>
+                            <label>
+                                <input type="radio" name="type" value="game" n:attr="checked => (($type ?? 1) === 1)" />
+                                {_apps_type_game}
+                            </label>
+                            &nbsp;&nbsp;
+                            <label>
+                                <input type="radio" name="type" value="app" n:attr="checked => (($type ?? 1) === 0)" />
+                                {_apps_type_app}
+                            </label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td width="120" valign="top">
+                            <span class="nobold">{_app_runner}: </span>
+                        </td>
+                        <td>
+                            <label>
+                                <input type="radio" name="runner" value="html" class="app-runner-radio" n:attr="checked => (($runner ?? 0) === 0)" />
+                                {_app_runner_html}
+                            </label>
+                            &nbsp;&nbsp;
+                            <label>
+                                <input type="radio" name="runner" value="flash" class="app-runner-radio" n:attr="checked => (($runner ?? 0) === 1)" />
+                                {_app_runner_flash}
+                            </label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td width="120" valign="top">
                             <span class="nobold">{_avatar}: </span>
                         </td>
                         <td>
                             <input type="file" name="ava" accept="image/*" />
+                        </td>
+                    </tr>
+                    <tr class="app-swf-row" n:attr="style => (($runner ?? 0) === 1 ? '' : 'display:none')">
+                        <td width="120" valign="top">
+                            <span class="nobold">{_app_swf}: </span>
+                        </td>
+                        <td>
+                            <input type="file" name="swf" accept=".swf,application/x-shockwave-flash" />
+                            {if !$create && !empty($hasSwf)}
+                                <div style="color:#777;margin-top:4px;">{_app_swf_uploaded}</div>
+                            {/if}
                         </td>
                     </tr>
                     <tr>
@@ -63,6 +110,17 @@
                         </td>
                         <td>
                             <input type="text" name="url" value="{$url ?? ''}" />
+                            <div class="app-url-hint-html" n:attr="style => (($runner ?? 0) === 0 ? '' : 'display:none')" style="color:#777;margin-top:4px;">{_app_creation_hint_url}</div>
+                            <div class="app-url-hint-flash" n:attr="style => (($runner ?? 0) === 1 ? '' : 'display:none')" style="color:#777;margin-top:4px;">{_app_url_optional_flash}</div>
+                        </td>
+                    </tr>
+                    <tr n:if="!$create && !empty($secret)">
+                        <td width="120" valign="top">
+                            <span class="nobold">{_app_secret}: </span>
+                        </td>
+                        <td>
+                            <code>{$secret}</code>
+                            <div style="color:#777;margin-top:4px;">{_app_secret_hint}</div>
                         </td>
                     </tr>
                     <tr>
@@ -97,6 +155,7 @@
                 {if $create}
                     <li>{_app_creation_hint_url}</li>
                     <li>{_app_creation_hint_iframe}</li>
+                    <li>{_app_creation_hint_flash}</li>
                 {else}
                     <li>{tr("app_balance", $coins)|noescape} (<a href="javascript:withdraw({$id})">{_app_withdrawal_q}</a>)</li>
                     <li>{tr("app_users", $users)|noescape}</li>
@@ -106,7 +165,93 @@
     </div>
 
     <script>
-        window.coins = {$coins}
+        window.coins = {$coins ?? 0}
+        // #region agent log
+        (function () {
+            function box(el) {
+                if (!el) return null;
+                var r = el.getBoundingClientRect();
+                var cs = window.getComputedStyle(el);
+                return {
+                    w: Math.round(r.width),
+                    h: Math.round(r.height),
+                    left: Math.round(r.left),
+                    top: Math.round(r.top),
+                    padding: cs.padding,
+                    bg: cs.backgroundColor,
+                    widthCss: cs.width,
+                    marginLeft: cs.marginLeft,
+                    overflow: cs.overflow
+                };
+            }
+            function send(message, data, hypothesisId) {
+                fetch('http://localhost:7529/ingest/aed4c84e-c5ad-490d-9ad2-0fd3e310b9d6', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'd99942' },
+                    body: JSON.stringify({
+                        sessionId: 'd99942',
+                        runId: 'css-edit',
+                        hypothesisId: hypothesisId,
+                        location: 'Edit.latte:layoutProbe',
+                        message: message,
+                        data: data,
+                        timestamp: Date.now()
+                    })
+                }).catch(function () {});
+            }
+            function probe() {
+                var cont = document.getElementById('app_edit_cont');
+                var pageBody = document.querySelector('.page_body');
+                var pageContent = document.querySelector('.page_content');
+                var yellow = document.querySelector('.page_yellowheader');
+                var table = document.querySelector('.apps_edit_table');
+                var input = document.querySelector('.apps_edit_table input[type="text"]');
+                var sidebar = document.querySelector('.sidebar');
+                send('edit layout metrics', {
+                    viewport: { w: window.innerWidth, h: window.innerHeight },
+                    cont: box(cont),
+                    pageBody: box(pageBody),
+                    pageContent: box(pageContent),
+                    yellow: box(yellow),
+                    table: box(table),
+                    input: box(input),
+                    sidebar: box(sidebar),
+                    yellowTextOverflowsLeft: yellow && sidebar ? (yellow.getBoundingClientRect().left < sidebar.getBoundingClientRect().right - 5) : null,
+                    contNarrowerThanContent: cont && pageContent ? (cont.getBoundingClientRect().width < pageContent.getBoundingClientRect().width - 20) : null,
+                    tableWidthPct: table && cont ? Math.round(100 * table.getBoundingClientRect().width / Math.max(1, cont.getBoundingClientRect().width)) : null
+                }, 'H-CSS1');
+                send('edit style mismatch checks', {
+                    inputHasTextClass: !!(input && input.classList.contains('text')),
+                    inputBorder: input ? getComputedStyle(input).border : null,
+                    inputWidth: input ? getComputedStyle(input).width : null,
+                    h4Width: (function () {
+                        var h = cont && cont.querySelector('h4');
+                        return h ? Math.round(h.getBoundingClientRect().width) : null;
+                    })(),
+                    appsCssLoaded: !!document.querySelector('link[href*="apps.css"]'),
+                    appsEditCssLoaded: !!document.querySelector('link[href*="apps_edit.css"]')
+                }, 'H-CSS4');
+            }
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', probe);
+            else probe();
+        })();
+        // #endregion
+        function syncAppRunnerFields() {
+            var flash = document.querySelector('input[name="runner"][value="flash"]').checked;
+            document.querySelectorAll('.app-swf-row').forEach(function (el) {
+                el.style.display = flash ? '' : 'none';
+            });
+            document.querySelectorAll('.app-url-hint-html').forEach(function (el) {
+                el.style.display = flash ? 'none' : '';
+            });
+            document.querySelectorAll('.app-url-hint-flash').forEach(function (el) {
+                el.style.display = flash ? '' : 'none';
+            });
+        }
+        document.querySelectorAll('.app-runner-radio').forEach(function (el) {
+            el.addEventListener('change', syncAppRunnerFields);
+        });
+        syncAppRunnerFields();
         {if $canDelete}
             $("#delete_app").on("click", (e) => { 
                 e.preventDefault() 

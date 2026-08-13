@@ -1,0 +1,266 @@
+#app_edit_cont {
+	padding: 1px;
+margin-top:12px;
+	position: relative;
+	background: #F7FAFF;
+
+}
+
+#app_edit_cont_opt {
+padding: 1px;
+margin-top:12px;
+	position: relative;
+	background: #F7FAFF;
+}
+
+.apps_edit_success {
+	background-color: #F9F6E7;
+	border: 1px solid #D4BC4C;
+	font-size: 1em;
+	line-height: 160%;
+	padding: 8px 11px;
+	display: none;
+}
+
+.apps_edit_info {
+	padding: 0px 0px 0px 0px;
+}
+
+.apps_edit_table {
+	width: 100%;
+	border-spacing: 0px;
+}
+
+.apps_edit_table {
+	width: 100%;
+	border-spacing: 0px;
+}
+
+.apps_edit_table td {
+	padding: 5px 5px;
+	vertical-align: top;
+}
+
+td.apps_edit_info_r {
+	padding: 5px 0px;
+}
+
+td.apps_edit_wide {
+	padding-left: 0px;
+}
+
+td.apps_edit_label {
+	color: #666;
+	width: 185px;
+	padding-top: 8px;
+}
+
+td.apps_edit_info_narrow {
+	padding: 9px 10px 8px 0px;
+	width: 180px;
+	text-align: center;
+}
+
+.apps_edit_table .label {
+	color: #666666;
+	width: 185px;
+	padding-top: 8px;
+}
+
+.text{
+	padding: 4px;
+	border: 1px solid #C6D4DC;
+}
+
+.apps_edit_table .text {
+	width: 250px;
+	height:18px;
+	margin-top:-3px;
+}
+
+.apps_edit_table .inpst {
+	height:27px;
+	margin-top:-3px;
+}
+
+.apps_edit_table textarea {
+	height: 60px;
+	float: left;
+	margin-right: 6px;
+}
+
+.apps_edit_img_block {
+	padding: 3px;
+	background: white;
+	display: inline-block;
+	zoom: 1;
+	box-shadow: 0px 1px 3px #ced2d8;
+	-moz-box-shadow: 0px 1px 3px #ced2d8;
+	-webkit-box-shadow: 0px 1px 3px #ced2d8;
+}
+
+td.apps_edit_info_save {
+	padding: 15px 5px 0px 5px;
+}
+
+div.apps_edit_header {
+	padding: 20px 0px 5px 200px;
+	font-weight: bold;
+	font-size: 1.18em;
+	color: #2B587A;
+}
+
+td.apps_edit_header {
+	padding: 20px 5px 5px 5px;
+	font-weight: bold;
+	font-size: 1.18em;
+	color: #2B587A;
+}
+
+.apps_edit_table .text_small {
+	width: 50px;
+}
+
+.apps_edit_other {
+	background: #FFFFFF;
+	border-top: 1px solid #dbe2e9;
+	padding: 0px 15px 15px 15px;
+}
+
+.apps_edit_top {
+	height: 10px;
+}
+
+.wk_table {
+	border: 1px solid #DAE1E8;
+	border-right: 0;
+	border-top: 0;
+	padding: 0px;
+	margin: 0 auto 10px auto;
+	border-collapse: collapse;
+	width: 90%;
+}
+
+.wk_table td {
+	background-color: #FFFFFF;
+	border-top: 1px solid #DAE1E8;
+	border-right: 1px solid #DAE1E8;
+	vertical-align: top;
+	padding: 5px;
+	margin: 0;
+}
+
+.wk_table th {
+	background-color: #DAE1E8;
+	border: 0;
+	margin: 0;
+	border-top: 1px solid #DAE1E8;
+	border-right: 1px solid #DAE1E8;
+	padding: 5px;
+	text-align: left;
+}
+
+#app_edit_error_wrap {
+	padding: 15px 15px 5px;
+	display: none;
+}
+
+.app_stat_head {
+	border-bottom: 1px solid #DAE1E8;
+	color: #45688E;
+	font-size: 1.09em;
+	font-weight: bold;
+	margin: 0 10px 20px;
+	padding: 20px 0 2px;
+	text-align: left;
+}
+
+.app_stat_head.no_padd {
+	padding-top: 5px;
+}
+
+.app_stat_head.no_lpadd {
+	margin-left: 5px;
+	margin-right: 5px;
+}
+
+.apps_edit_user {
+	border-top: 1px solid #DAE1E8;
+	margin: 0 15px;
+	padding: 15px 0 15px 0;
+}
+
+.apps_edit_user:first-child {
+	border-top: 0px;
+}
+
+.app_edit_main {
+	background: #F7F7F7;
+}
+
+.app_edit_main  h5 {
+	color: #45688E;
+	font-size: 1.18em;
+	margin: 24px 0 12px;
+}
+
+#apps_edit_admins {
+	background-color: #FFF;
+	padding-bottom: 10px;
+}
+
+.summary_wrap {
+	color: #45688E;
+	padding: 13px 10px 0px;
+	background: #FFF;
+	border-bottom: 1px solid #DAE1E8;
+}
+
+.summary_wrap .summary {
+	font-weight: bold;
+	padding: 3px 0px 4px;
+}
+
+.apps_edit_user_thumb_wrap {
+	width: 42px;
+	height: 32px;
+	overflow: hidden;
+	position: relative;
+}
+
+.apps_edit_user_thumb {
+	width: 32px;
+	height: 32px;
+	display: block;
+	overflow: hidden;
+}
+
+.apps_edit_user_img {
+	width: 32px;
+}
+
+.apps_edit_user_info, .apps_edit_user_actions {
+	line-height: 32px;
+	height: 32px;
+}
+
+.apps_edit_user_actions {
+	color: #777;
+}
+.apps_edit_user_info, .apps_edit_user_actions {
+	line-height: 32px;
+}
+
+
+.radiobtn {
+  cursor: pointer;
+  line-height: 1.27em;
+}
+.radiobtn div {
+  float: left;
+  width: 15px;
+  margin-right: 5px;
+  height: 14px;
+  margin-bottom: 1px; /* Second line fix */
+  background: url(../images/icons/radio.gif) 0px 0px no-repeat;
+}

@@ -1,0 +1,44 @@
+{extends "../@layout.latte"}
+
+{block title}{_apps}{/block}
+
+{block header}
+    {_apps}
+{/block}
+
+{block content}
+<div id="apps_page">
+    <div class="tabs stupid-fix">
+        <div n:attr="id => ($act === 'catalog' ? 'activetabs' : 'ki')" class="tab">
+            <a n:attr="id => ($act === 'catalog' ? 'act_tab_a' : 'ki')" href="/apps">{_apps_catalog}</a>
+        </div>
+        <div n:attr="id => ($act === 'installed' ? 'activetabs' : 'ki')" class="tab">
+            <a n:attr="id => ($act === 'installed' ? 'act_tab_a' : 'ki')" href="/apps?act=installed">{_installed_apps}</a>
+        </div>
+        <div n:attr="id => ($act === 'soft' ? 'activetabs' : 'ki')" class="tab">
+            <a n:attr="id => ($act === 'soft' ? 'act_tab_a' : 'ki')" href="/apps?act=soft">{_apps_soft}</a>
+        </div>
+        <div n:attr="id => ($act === 'dev' ? 'activetabs' : 'ki')" class="tab">
+            <a n:attr="id => ($act === 'dev' ? 'act_tab_a' : 'ki')" href="/apps?act=dev">{_own_apps}</a>
+        </div>
+    </div>
+
+    <div class="apps_soft_intro">{_apps_soft_intro}</div>
+
+    {if sizeof($clients) > 0}
+        <div class="apps_soft_list">
+            <div class="apps_application" n:foreach="$clients as $client">
+                <a href="{$client['url']}" target="_blank" rel="noopener noreferrer">
+                    <img class="apps_app_icon" src="{$client['img']}" alt="" />
+                </a>
+                <div class="apps_app_meta">
+                    <a href="{$client['url']}" target="_blank" rel="noopener noreferrer">{$client['name']}</a>
+                    <div class="apps_app_desc">{$client['url']}</div>
+                </div>
+            </div>
+        </div>
+    {else}
+        <div class="apps_empty">{_apps_soft_empty}</div>
+    {/if}
+</div>
+{/block}

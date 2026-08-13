@@ -40,6 +40,11 @@ final class BlobPresenter extends OpenVKPresenter
 
         header("Content-Type: " . mime_content_type($path));
         header("Content-Size: " . filesize($path));
+        // #region agent log
+        if (substr($path, -4) === ".swf" || $format === "swf") {
+            @file_put_contents(OPENVK_ROOT . "/storage/_debug_d99942.log", json_encode(["sessionId" => "d99942", "hypothesisId" => "H4", "location" => "BlobPresenter.php:renderFile", "message" => "serving swf blob", "data" => ["format" => $format, "mime" => mime_content_type($path), "size" => filesize($path), "basename" => basename($path)], "timestamp" => (int) (microtime(true) * 1000)]) . "\n", FILE_APPEND);
+        }
+        // #endregion
         header("Cache-Control: public, max-age=1210000");
         header("X-Accel-Expires: 1210000");
         header("ETag: W/\"" . hash_file("snefru", $path) . "\"");

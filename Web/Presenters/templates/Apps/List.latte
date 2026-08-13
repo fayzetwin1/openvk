@@ -7,7 +7,7 @@
 {block header}
     {_apps}
 
-    <div n:if="$act === 'dev'" style="float: right;">
+    <div n:if="$act === 'dev' || $act === 'installed'" style="float: right;">
         <span><b>
             <a href="/editapp?act=create">{_create}</a>
         </b></span>
@@ -15,12 +15,16 @@
 {/block}
 
 {block tabs}
-    <div n:attr="id => ($act === 'list' ? 'activetabs' : 'ki')" class="tab">
-        <a n:attr="id => ($act === 'list' ? 'act_tab_a' : 'ki')" href="/search?q=&section=apps">{_all_apps}</a>
+    <div n:attr="id => ($act === 'catalog' ? 'activetabs' : 'ki')" class="tab">
+        <a n:attr="id => ($act === 'catalog' ? 'act_tab_a' : 'ki')" href="/apps">{_apps_catalog}</a>
     </div>
 
     <div n:attr="id => ($act === 'installed' ? 'activetabs' : 'ki')" class="tab">
         <a n:attr="id => ($act === 'installed' ? 'act_tab_a' : 'ki')" href="?act=installed">{_installed_apps}</a>
+    </div>
+
+    <div n:attr="id => ($act === 'soft' ? 'activetabs' : 'ki')" class="tab">
+        <a n:attr="id => ($act === 'soft' ? 'act_tab_a' : 'ki')" href="?act=soft">{_apps_soft}</a>
     </div>
 
     <div n:attr="id => ($act === 'dev' ? 'activetabs' : 'ki')" class="tab">
@@ -40,6 +44,11 @@
 
 {block name}
     {$x->getName()}
+    {if $x->isGame()}
+        <span style="color:#777;font-weight:normal;font-size:11px;"> · {_apps_type_game}</span>
+    {else}
+        <span style="color:#777;font-weight:normal;font-size:11px;"> · {_apps_type_app}</span>
+    {/if}
 {/block}
 
 {block description}

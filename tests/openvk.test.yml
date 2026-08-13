@@ -27,6 +27,7 @@ openvk:
             allowedFormats: ["jpg", "jpeg", "png", "gif", "webp"]
         apps:
             withdrawTax: 8
+            promo: []
         security:
             requireEmail: false
             requirePhone: false

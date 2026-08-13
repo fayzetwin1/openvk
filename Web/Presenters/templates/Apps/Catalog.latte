@@ -1,0 +1,170 @@
+{extends "../@layout.latte"}
+
+{block title}{_apps}{/block}
+
+{block header}{_apps}{/block}
+
+{block content}
+<div id="apps_page">
+    <div class="tabs stupid-fix">
+        <div n:attr="id => ($act === 'catalog' ? 'activetabs' : 'ki')" class="tab">
+            <a n:attr="id => ($act === 'catalog' ? 'act_tab_a' : 'ki')" href="/apps">{_apps_catalog}</a>
+        </div>
+        <div n:attr="id => ($act === 'installed' ? 'activetabs' : 'ki')" class="tab">
+            <a n:attr="id => ($act === 'installed' ? 'act_tab_a' : 'ki')" href="/apps?act=installed">{_installed_apps}</a>
+        </div>
+        <div n:attr="id => ($act === 'soft' ? 'activetabs' : 'ki')" class="tab">
+            <a n:attr="id => ($act === 'soft' ? 'act_tab_a' : 'ki')" href="/apps?act=soft">{_apps_soft}</a>
+        </div>
+        <div n:attr="id => ($act === 'dev' ? 'activetabs' : 'ki')" class="tab">
+            <a n:attr="id => ($act === 'dev' ? 'act_tab_a' : 'ki')" href="/apps?act=dev">{_own_apps}</a>
+        </div>
+    </div>
+
+    <div class="apps_side">
+        <form class="apps_side_search" method="get" action="/search">
+            <input type="hidden" name="section" value="apps" />
+            <svg class="apps_search_icon" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <circle cx="6.5" cy="6.5" r="5" fill="none" stroke="#7a8a9a" stroke-width="1.5"/>
+                <line x1="10.2" y1="10.2" x2="14" y2="14" stroke="#7a8a9a" stroke-width="1.5"/>
+            </svg>
+            <input type="text" name="q" placeholder="{_apps_search_placeholder}" />
+        </form>
+    </div>
+
+    {* 1. Installed + Friends activity *}
+    <div id="apps_rows">
+        <div class="apps_block">
+            <div class="apps_title">{_installed_apps}</div>
+            {if sizeof($installed) > 0}
+                <div class="apps_my_grid">
+                    <div class="apps_my_grid_item" n:foreach="$installed as $app">
+                        <a href="/app{$app->getId()}">
+                            <img src="{$app->getAvatarUrl()}" alt="" />
+                            <span class="apps_my_name">{$app->getName()}</span>
+                        </a>
+                    </div>
+                </div>
+            {else}
+                <div class="apps_empty">{_apps_no_installed}</div>
+            {/if}
+        </div>
+
+        <div class="apps_block">
+            <div class="apps_title">{_friends_activity}</div>
+            {if sizeof($friendsActivity) > 0}
+                <div class="apps_activity_item" n:foreach="$friendsActivity as $event">
+                    {var $evUser = $event->getUser()}
+                    {var $evApp = $event->getApp()}
+                    {continueIf !$evUser || !$evApp}
+                    <a href="/app{$evApp->getId()}">
+                        <img class="apps_act_app_icon" src="{$evApp->getAvatarUrl()}" alt="" />
+                    </a>
+                    <a href="{$evUser->getURL()}">
+                        <img class="apps_act_ava" src="{$evUser->getAvatarUrl()}" alt="" />
+                    </a>
+                    <div class="apps_act_body">
+                        <a href="{$evUser->getURL()}">{$evUser->getFullName()}</a>
+                        {if $event->isInstall()}
+                            {_apps_activity_installed}
+                        {else}
+                            {_apps_activity_launched}
+                        {/if}
+                        <a href="/app{$evApp->getId()}">{$evApp->getName()}</a>
+                        <span class="apps_act_time">{$event->getTime()}</span>
+                    </div>
+                </div>
+            {else}
+                <div class="apps_empty">{_apps_no_activity}</div>
+            {/if}
+        </div>
+        <div class="apps_clear"></div>
+    </div>
+
+    {if sizeof($installed) > 0}
+        <a class="apps_add_more" href="/apps?act=installed">{_show_more_apps}</a>
+    {/if}
+
+    {* 2. Promo banner *}
+    {if sizeof($promo) > 0}
+        <div class="apps_section_divider"></div>
+        <div class="apps_promo" id="apps_promo">
+            <div class="apps_promo_slides">
+                {foreach $promo as $i => $banner}
+                    <div class="apps_promo_slide{if $i === 0} apps_promo_active{/if}" data-slide="{$i}">
+                        <a n:attr="href => ($banner['url'] ?? '#')">
+                            <img n:attr="src => ($banner['image'] ?? ''), alt => ($banner['title'] ?? '')" />
+                        </a>
+                    </div>
+                {/foreach}
+            </div>
+            {if sizeof($promo) > 1}
+                <a href="#" class="control apps_promo_arrow_l" id="leftControl" onclick="return appsPromoNav(-1);">prev</a>
+                <a href="#" class="control apps_promo_arrow_r" id="rightControl" onclick="return appsPromoNav(1);">next</a>
+            {/if}
+        </div>
+        <script>
+            (function () {
+                var idx = 0;
+                var slides = document.querySelectorAll("#apps_promo .apps_promo_slide");
+                window.appsPromoNav = function (dir) {
+                    if (!slides.length) return false;
+                    slides[idx].classList.remove("apps_promo_active");
+                    idx = (idx + dir + slides.length) % slides.length;
+                    slides[idx].classList.add("apps_promo_active");
+                    return false;
+                };
+            })();
+        </script>
+    {/if}
+
+    {* 3. Popular games + New *}
+    <div class="apps_section_divider"></div>
+    <div id="apps_rows">
+        <div class="apps_block">
+            <div class="apps_title">{_popular_games}</div>
+            {if sizeof($popularGames) > 0}
+                <div class="apps_application" n:foreach="$popularGames as $app">
+                    <a href="/app{$app->getId()}">
+                        <img class="apps_app_icon" src="{$app->getAvatarUrl()}" alt="" />
+                    </a>
+                    <div class="apps_app_meta">
+                        <a href="/app{$app->getId()}">{$app->getName()}</a>
+                        <span class="apps_type_badge game">{_apps_type_game}</span>
+                        <div class="apps_app_users">{tr("apps_participants", $app->getUsersCount())}</div>
+                    </div>
+                </div>
+            {else}
+                <div class="apps_empty">{_apps_no_popular}</div>
+            {/if}
+        </div>
+
+        <div class="apps_block">
+            <div class="apps_title">
+                {_apps_new}
+                <span class="apps_title_toggles">
+                    <a n:attr="class => ($newType === 1 ? 'apps_toggle_active' : null)" href="/apps?newtype=game">{_apps_type_games}</a>
+                    <a n:attr="class => ($newType === 0 ? 'apps_toggle_active' : null)" href="/apps?newtype=app">{_apps_type_apps}</a>
+                </span>
+            </div>
+            {if sizeof($newItems) > 0}
+                <div class="apps_application" n:foreach="$newItems as $app">
+                    <a href="/app{$app->getId()}">
+                        <img class="apps_app_icon" src="{$app->getAvatarUrl()}" alt="" />
+                    </a>
+                    <div class="apps_app_meta">
+                        <a href="/app{$app->getId()}">{$app->getName()}</a>
+                        <span n:attr="class => 'apps_type_badge ' . ($app->isGame() ? 'game' : 'app')">
+                            {if $app->isGame()}{_apps_type_game}{else}{_apps_type_app}{/if}
+                        </span>
+                        <div class="apps_app_users">{tr("apps_participants", $app->getUsersCount())}</div>
+                    </div>
+                </div>
+            {else}
+                <div class="apps_empty">{_apps_no_new}</div>
+            {/if}
+        </div>
+        <div class="apps_clear"></div>
+    </div>
+</div>
+{/block}
